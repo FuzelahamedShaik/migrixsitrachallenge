@@ -2,6 +2,7 @@
 
 global using Ikon.AI.Chat;
 global using Ikon.AI.Emergence;
+global using Ikon.AI.WebScraping;
 global using Ikon.AI.ImageGeneration;
 global using Ikon.AI.Kernel;
 global using Ikon.AI.LLM;
@@ -26,6 +27,9 @@ global using System.Collections.Generic;
 global using System.Threading.Tasks;
 global using System.Threading;
 global using System;
+
+// PermitReady extension methods (DisplayName, ShortName, MigriFiUrl, etc.)
+global using PermitReady;
 
 // Modify this to change the active theme
 global using Themes.Ikon;

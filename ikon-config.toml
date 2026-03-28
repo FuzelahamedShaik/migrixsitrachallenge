@@ -7,7 +7,7 @@ Databases = []
 # Endpoint configurations for exposing the app externally (assigned port numbers and public URLs are available via host.Endpoints in the app)
 # Format: "name:protocol" - valid protocols: http, https, tls, tcp
 # Examples: "api:https", "webhooks:http", "gameserver:tcp"
-Endpoints = []
+Endpoints = ["docs:http"]
 
 # Activation configuration for the app (app activation is separate from deployment)
 [Activation]
