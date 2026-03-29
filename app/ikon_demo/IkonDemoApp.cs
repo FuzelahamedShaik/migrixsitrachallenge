@@ -6,6 +6,7 @@ public record ClientParameters(string Name = "PermitReady");
 [App]
 public partial class IkonDemoApp(IApp<SessionIdentity, ClientParameters> app)
 {
+    private readonly IAppBase _host = app;   // backing field so DB helpers can access it across partial files
     private UI    UI    { get; } = new(app, new Theme());
     private Audio Audio { get; } = new(app);
 
@@ -42,20 +43,13 @@ public partial class IkonDemoApp(IApp<SessionIdentity, ClientParameters> app)
     // Form state — family
     private readonly ClientReactive<string>  _sponsorName          = new("");
     private readonly ClientReactive<string>  _sponsorPermitNumber  = new("");
-    // Upload slots — one per required document
-    private readonly ClientReactive<PermitReady.UploadedDoc?> _passportDoc      = new(null);
-    private readonly ClientReactive<PermitReady.UploadedDoc?> _acceptanceDoc    = new(null);
-    private readonly ClientReactive<PermitReady.UploadedDoc?> _transcriptDoc    = new(null);
-    private readonly ClientReactive<PermitReady.UploadedDoc?> _bankStatementDoc = new(null);
-    private readonly ClientReactive<PermitReady.UploadedDoc?> _contractDoc      = new(null);
-    private readonly ClientReactive<PermitReady.UploadedDoc?> _salaryProofDoc   = new(null);
-    // Drag-active state per zone
-    private readonly ClientReactive<bool>    _dragPassport      = new(false);
-    private readonly ClientReactive<bool>    _dragAcceptance    = new(false);
-    private readonly ClientReactive<bool>    _dragTranscript    = new(false);
-    private readonly ClientReactive<bool>    _dragBankStatement = new(false);
-    private readonly ClientReactive<bool>    _dragContract      = new(false);
-    private readonly ClientReactive<bool>    _dragSalaryProof   = new(false);
+    // Upload slots — multiple documents supported per slot
+    private readonly ClientReactive<List<PermitReady.UploadedDoc>> _passportDoc      = new([]);
+    private readonly ClientReactive<List<PermitReady.UploadedDoc>> _acceptanceDoc    = new([]);
+    private readonly ClientReactive<List<PermitReady.UploadedDoc>> _transcriptDoc    = new([]);
+    private readonly ClientReactive<List<PermitReady.UploadedDoc>> _bankStatementDoc = new([]);
+    private readonly ClientReactive<List<PermitReady.UploadedDoc>> _contractDoc      = new([]);
+    private readonly ClientReactive<List<PermitReady.UploadedDoc>> _salaryProofDoc   = new([]);
     // Submission
     private readonly ClientReactive<bool>    _isSubmitting   = new(false);
     private readonly ClientReactive<string>  _formError      = new("");
@@ -69,8 +63,13 @@ public partial class IkonDemoApp(IApp<SessionIdentity, ClientParameters> app)
     private readonly ClientReactive<string>  _officerPin     = new("");
     private readonly ClientReactive<string>  _pinError       = new("");
 
-    // Dashboard tab
-    private readonly ClientReactive<string>  _dashboardTab   = new("all");
+    // Dashboard tab & filters
+    private readonly ClientReactive<string>  _dashboardTab      = new("all");
+    private readonly ClientReactive<string>  _filterCategory    = new("");          // empty = all
+    private readonly ClientReactive<string>  _filterStatus      = new("");          // empty = all
+    private readonly ClientReactive<string>  _filterRiskLevel   = new("");          // empty | "low" | "medium" | "high"
+    private readonly ClientReactive<string>  _filterCompleteLevel = new("");        // empty | "low" | "medium" | "high"
+    private readonly ClientReactive<bool>    _showFilters       = new(false);
 
     // Application tracking (applicant home page)
     private readonly ClientReactive<string>  _trackId        = new("");
@@ -101,6 +100,10 @@ public partial class IkonDemoApp(IApp<SessionIdentity, ClientParameters> app)
     // ── Chat audit log (shared across all officer sessions) ───────────────
     private readonly Reactive<List<PermitReady.ChatAuditEntry>> _chatAuditLog = new([]);
 
+    // ── Official messages (Officer ↔ Applicant — shared, real-time) ──────
+    private readonly Reactive<List<PermitReady.OfficialMessage>>  _officialMessages = new([]);
+    private readonly Reactive<List<PermitReady.ProfileAccessEntry>> _profileAccessLog = new([]);
+
     // ── Officer decision state (per-client) ───────────────────────────────
     private readonly ClientReactive<bool>   _showDecisionPanel  = new(false);
     private readonly ClientReactive<string> _pendingDecision    = new("");   // "approve"|"supplement"|"reject"
@@ -110,11 +113,51 @@ public partial class IkonDemoApp(IApp<SessionIdentity, ClientParameters> app)
     // ── Audit log panel (per-client) ──────────────────────────────────────
     private readonly ClientReactive<bool>   _showAuditLog       = new(false);
 
+    // ── Profile access reason dialog (per-client — GDPR Article 5) ───────
+    private readonly ClientReactive<bool>   _showAccessReasonDialog = new(false);
+    private readonly ClientReactive<string> _pendingAccessAppId     = new("");
+    private readonly ClientReactive<string> _accessReason           = new("");
+    private readonly ClientReactive<string> _accessReasonError      = new("");
+
+    // ── Message thread tab (per-client) ───────────────────────────────────
+    private readonly ClientReactive<string> _messageThreadTab       = new("ai"); // "ai" | "messages"
+
+    // ── Officer message compose (per-client) ──────────────────────────────
+    private readonly ClientReactive<bool>   _showComposeMessage     = new(false);
+    private readonly ClientReactive<string> _composeMessageType     = new("GeneralMessage");
+    private readonly ClientReactive<string> _composeMessageBody     = new("");
+
+    // ── Applicant reply compose (per-client) ──────────────────────────────
+    private readonly ClientReactive<bool>   _showReplyCompose    = new(false);
+    private readonly ClientReactive<string> _replyBody           = new("");
+    private readonly ClientReactive<bool>   _dragReplyFile       = new(false);
+    private readonly ClientReactive<string> _replyAttachFileName = new("");
+
+    // ── AI draft suggestion (per-client) ─────────────────────────────────
+    private readonly ClientReactive<bool>   _chatHasDraft       = new(false);
+    private readonly ClientReactive<string> _chatDraftContent   = new("");
+    private readonly ClientReactive<string> _chatDraftType      = new("none");
+
+    // ── Dashboard guide — shown every time the dashboard is opened ────────
+    private readonly ClientReactive<bool>   _dashboardGuideDismissed = new(false);
+
+    // ── Payment state (per-client) ────────────────────────────────────────
+    private readonly ClientReactive<string> _paymentMethod     = new("online-banking");
+    private readonly ClientReactive<bool>   _paymentProcessing = new(false);
+
+    // ── Applicant home panel state ────────────────────────────────────────
+    // "info"     → campaign awareness (full left panel)
+    // "applying" → narrow brand strip + inline form
+    private readonly ClientReactive<string> _homePanel = new("info");
+
     // ── Document viewer state (per-client) ────────────────────────────────
-    private string _docsEndpointUrl = "";
-    private readonly ClientReactive<bool>   _docViewerOpen   = new(false);
-    private readonly ClientReactive<string> _viewingDocAppId = new("");
-    private readonly ClientReactive<string> _viewingDocFile  = new("");
+    private readonly ClientReactive<bool>   _docViewerOpen    = new(false);
+    private readonly ClientReactive<string> _viewingDocAppId  = new("");
+    private readonly ClientReactive<string> _viewingDocFile   = new("");
+    private readonly ClientReactive<string> _viewingDocDataUrl = new("");   // base64 data URL
+
+    // ── Uploaded doc bytes cache (per-client, keyed by filename) ─────────
+    private readonly ClientReactive<Dictionary<string, byte[]>> _uploadedDocBytes = new(new());
 
     // ── Lifecycle ─────────────────────────────────────────────────────────
     public async Task Main()
@@ -138,28 +181,33 @@ public partial class IkonDemoApp(IApp<SessionIdentity, ClientParameters> app)
                 _theme.Value = ctx.Theme == Constants.DarkTheme ? Constants.DarkTheme : Constants.LightTheme;
         };
 
-        // PDF document endpoint — serves generated PDFs at /pdf?appId=...&file=...
-        var docsEndpoint = new AppEndpointHost(app, "docs");
-        docsEndpoint.MapGet("/pdf", async ctx =>
+        // Initialise database and load persisted applications (falls back to seed data if DB unavailable)
+        try
         {
-            var appId    = ctx.Request.Query["appId"].ToString();
-            var filename = ctx.Request.Query["file"].ToString();
-            var application = _applications.Value.FirstOrDefault(a => a.ApplicationId == appId);
-            if (application == null || string.IsNullOrEmpty(filename))
+            await PermitReady.PermitReadyDb.InitializeAsync(app);
+            var dbApps = await PermitReady.PermitReadyDb.LoadApplicationsAsync(app);
+            if (dbApps.Count > 0)
             {
-                ctx.Response.StatusCode = 404;
-                return;
+                _applications.Value = dbApps;
             }
-            var preview  = PermitReady.DummyDocumentFactory.GetPreview(filename, application.Input);
-            var pdfBytes = PermitReady.DummyDocumentFactory.GeneratePdf(preview);
-            ctx.Response.ContentType = "application/pdf";
-            ctx.Response.Headers["Content-Disposition"] = $"inline; filename=\"{filename}\"";
-            await ctx.Response.Body.WriteAsync(pdfBytes);
-        });
-        await docsEndpoint.StartAsync();
-        _docsEndpointUrl = docsEndpoint.PublicUrl;
+            else
+            {
+                SeedDemoData();
+                // Persist seed data to DB for next startup
+                foreach (var a in _applications.Value)
+                    _ = PermitReady.PermitReadyDb.SaveApplicationAsync(app, a);
+            }
 
-        SeedDemoData();
+            // Load persisted official messages
+            var dbMessages = await PermitReady.PermitReadyDb.LoadOfficialMessagesAsync(app);
+            if (dbMessages.Count > 0)
+                _officialMessages.Value = dbMessages;
+        }
+        catch
+        {
+            // DB not configured yet — use in-memory seed data
+            SeedDemoData();
+        }
 
         UI.Root([Page.Default], content: view =>
         {
@@ -173,14 +221,18 @@ public partial class IkonDemoApp(IApp<SessionIdentity, ClientParameters> app)
                     {
                         case "landing":        RenderLanding(view);        break;
                         case "applicant_home": RenderApplicantHome(view);  break;
+                        case "assessment":     RenderPermitAssessment(view); break;
                         case "form":           RenderForm(view);            break;
                         case "review":         RenderReview(view);          break;
+                        case "payment":        RenderPayment(view);         break;
                         case "results":        RenderResults(view);         break;
                         case "dashboard":      RenderDashboard(view);       break;
                         case "detail":         RenderDetail(view);          break;
                     }
                 });
 
+                // Profile access reason dialog (GDPR — must appear before detail view)
+                RenderAccessReasonDialog(view);
                 // Officer decision dialog (global overlay)
                 RenderDecisionDialog(view);
                 // Audit log dialog (global overlay)
@@ -195,8 +247,10 @@ public partial class IkonDemoApp(IApp<SessionIdentity, ClientParameters> app)
     // ── Navigation — updates both app state and browser URL ───────────────
     private void Navigate(string page)
     {
+        if (page == "dashboard")      _dashboardGuideDismissed.Value = false;
+        if (page == "applicant_home") _homePanel.Value = "info";   // always start on campaign view
         _page.Value = page;
-        _ = ClientFunctions.SetUrlAsync(PageToPath(page)); // fire-and-forget; just updates address bar
+        _ = ClientFunctions.SetUrlAsync(PageToPath(page));
     }
 
     // ── URL ↔ page mapping ────────────────────────────────────────────────
@@ -204,8 +258,10 @@ public partial class IkonDemoApp(IApp<SessionIdentity, ClientParameters> app)
     {
         "landing"        => "/",
         "applicant_home" => "/home",
+        "assessment"     => "/assess",
         "form"           => "/apply",
         "review"         => "/review",
+        "payment"        => "/payment",
         "results"        => "/results",
         "dashboard"      => "/dashboard",
         "detail"         => "/detail",
@@ -216,8 +272,10 @@ public partial class IkonDemoApp(IApp<SessionIdentity, ClientParameters> app)
     {
         "" or "landing"  => "landing",
         "home"           => "applicant_home",
+        "assess"         => "assessment",
         "apply"          => "form",
         "review"         => "review",
+        "payment"        => "payment",
         "results"        => "results",
         "dashboard"      => "dashboard",
         "detail"         => "detail",
@@ -262,17 +320,32 @@ public partial class IkonDemoApp(IApp<SessionIdentity, ClientParameters> app)
 
             // Build docs list from individual upload slots (for scoring engine keyword matching)
             var docs = new List<string>();
-            void AddDoc(PermitReady.UploadedDoc? d) { if (d != null && d.Status != PermitReady.DocStatus.Failed) docs.Add(d.FileName); }
-            AddDoc(_passportDoc.Value);
-            AddDoc(_acceptanceDoc.Value);
-            AddDoc(_transcriptDoc.Value);
-            AddDoc(_bankStatementDoc.Value);
-            AddDoc(_contractDoc.Value);
-            AddDoc(_salaryProofDoc.Value);
+            void AddDocs(List<PermitReady.UploadedDoc> list) { foreach (var d in list) if (d.Status != PermitReady.DocStatus.Failed) docs.Add(d.FileName); }
+            AddDocs(_passportDoc.Value);
+            AddDocs(_acceptanceDoc.Value);
+            AddDocs(_transcriptDoc.Value);
+            AddDocs(_bankStatementDoc.Value);
+            AddDocs(_contractDoc.Value);
+            AddDocs(_salaryProofDoc.Value);
 
             // Use AI-extracted expiry date as fallback if user didn't type one
-            if (passportExpiry == null && _passportDoc.Value?.Extracted.TryGetValue("ExpiryDate", out var aiExpiry) == true)
+            var firstPassport = _passportDoc.Value.FirstOrDefault();
+            if (passportExpiry == null && firstPassport?.Extracted.TryGetValue("ExpiryDate", out var aiExpiry) == true)
                 passportExpiry = DateTime.TryParse(aiExpiry, out var dt2) ? dt2 : null;
+
+            // Collect AI-extracted fields from verified documents (use first doc per slot)
+            var extractedDocFields = new Dictionary<string, string>();
+            void Collect(List<PermitReady.UploadedDoc> list, string prefix)
+            {
+                var doc = list.FirstOrDefault();
+                if (doc?.Extracted == null) return;
+                foreach (var kv in doc.Extracted)
+                    extractedDocFields[$"{prefix}_{kv.Key.ToLowerInvariant()}"] = kv.Value;
+            }
+            Collect(_passportDoc.Value,      "passport");
+            Collect(_bankStatementDoc.Value, "bank");
+            Collect(_contractDoc.Value,      "contract");
+            Collect(_salaryProofDoc.Value,   "salary");
 
             var input = new PermitReady.ApplicationInput(
                 FullName:              _fullName.Value.Trim(),
@@ -289,7 +362,8 @@ public partial class IkonDemoApp(IApp<SessionIdentity, ClientParameters> app)
                 SponsorName:           _sponsorName.Value.NullIfEmpty(),
                 SponsorPermitNumber:   _sponsorPermitNumber.Value.NullIfEmpty(),
                 UploadedDocuments:     docs,
-                PassportExpiry:        passportExpiry
+                PassportExpiry:        passportExpiry,
+                ExtractedDocFields:    extractedDocFields.Count > 0 ? extractedDocFields : null
             );
 
             var result = PermitReady.ScoringService.Score(input);
@@ -298,7 +372,7 @@ public partial class IkonDemoApp(IApp<SessionIdentity, ClientParameters> app)
             _lastInput.Value  = input;
             _lastResult.Value = result;
 
-            // If any issues exist → go to review page so applicant can fix before sending
+            // If any issues exist → go to review page so applicant can fix before paying
             bool hasIssues = result.MissingItems.Count > 0 || result.RiskFlags.Count > 0;
             if (hasIssues)
             {
@@ -306,9 +380,8 @@ public partial class IkonDemoApp(IApp<SessionIdentity, ClientParameters> app)
             }
             else
             {
-                // Perfect application — commit immediately and show results
-                CommitApplication(input, result);
-                Navigate("results");
+                // Perfect application — go straight to payment
+                Navigate("payment");
             }
         }
         finally
@@ -317,24 +390,84 @@ public partial class IkonDemoApp(IApp<SessionIdentity, ClientParameters> app)
         }
     }
 
-    // ── Phase 2: Applicant confirmed — commit to officer queue ────────────
+    // ── Phase 2: Applicant confirmed issues — proceed to payment ─────────
     private void ConfirmSubmissionAsync()
     {
         var input  = _lastInput.Value;
         var result = _lastResult.Value;
         if (input == null || result == null) return;
-
-        CommitApplication(input, result);
-        Navigate("results");
+        Navigate("payment");
     }
 
+    // ── Phase 3: Simulate payment gateway, then commit to officer queue ───
+    private async Task ProcessPaymentAsync()
+    {
+        if (_paymentProcessing.Value) return;
+        var input  = _lastInput.Value;
+        var result = _lastResult.Value;
+        if (input == null || result == null) { Navigate("form"); return; }
+
+        _paymentProcessing.Value = true;
+        try
+        {
+            await Task.Delay(2200); // simulate bank/card gateway round-trip
+
+            var fee    = GetApplicationFee(input.Category);
+            var payRef = $"PRN-{DateTime.UtcNow:yyyyMMddHHmm}-{new Random().Next(10000, 99999)}";
+
+            CommitApplication(input, result, fee, payRef);
+            Navigate("results");
+        }
+        finally
+        {
+            _paymentProcessing.Value = false;
+        }
+    }
+
+    // ── Fee schedule — Finnish Immigration Service 2026 (online rates) ────
+    private static decimal GetApplicationFee(PermitReady.PermitCategory cat) => cat switch
+    {
+        PermitReady.PermitCategory.WorkingHoliday   => 100m,
+        PermitReady.PermitCategory.SeasonalWorker   => 530m,
+        PermitReady.PermitCategory.AuPair           => 530m,
+        PermitReady.PermitCategory.LanguageCourse   => 300m,
+        PermitReady.PermitCategory.Researcher       => 600m,
+        PermitReady.PermitCategory.StudentHigherEd  => 600m,
+        PermitReady.PermitCategory.StudentVocational => 600m,
+        PermitReady.PermitCategory.ExchangeStudent  => 600m,
+        PermitReady.PermitCategory.TraineeIntern    => 600m,
+        _                                           => 750m,
+    };
+
     // ── Internal: write to shared applications list ───────────────────────
-    private void CommitApplication(PermitReady.ApplicationInput input, PermitReady.ScreeningResult result)
+    private void CommitApplication(
+        PermitReady.ApplicationInput input,
+        PermitReady.ScreeningResult result,
+        decimal feeAmount = 0m,
+        string? paymentReference = null)
     {
         var appId  = $"A{(_applications.Value.Count + 1):D3}";
-        var stored = new PermitReady.StoredApplication(appId, input, result, DateTime.UtcNow);
+        var stored = new PermitReady.StoredApplication(
+            appId, input, result, DateTime.UtcNow,
+            PaymentStatus:    PermitReady.PaymentStatus.Paid,
+            FeeAmount:        feeAmount,
+            PaymentReference: paymentReference);
         _applications.Value = [.. _applications.Value, stored];
         _lastAppId.Value    = appId;
+
+        // Persist to DB (fire-and-forget) — also saves any uploaded doc bytes
+        _ = PersistApplicationAsync(stored);
+    }
+
+    private async Task PersistApplicationAsync(PermitReady.StoredApplication stored)
+    {
+        await PermitReady.PermitReadyDb.SaveApplicationAsync(app, stored);
+
+        // Save cached document bytes to DB
+        foreach (var (filename, bytes) in _uploadedDocBytes.Value)
+            await PermitReady.PermitReadyDb.SaveDocumentAsync(app, stored.ApplicationId, filename, bytes);
+
+        _uploadedDocBytes.Value.Clear();
     }
 
     // ── Officer PIN verification ──────────────────────────────────────────
@@ -361,13 +494,17 @@ public partial class IkonDemoApp(IApp<SessionIdentity, ClientParameters> app)
         var apps = _applications.Value.ToList();
         var idx  = apps.FindIndex(a => a.ApplicationId == appId);
         if (idx < 0) return;
-        apps[idx] = apps[idx] with
+        var updated = apps[idx] with
         {
             Status          = newStatus,
             StatusChangedAt = DateTime.UtcNow,
             OfficerNotes    = officerNotes ?? apps[idx].OfficerNotes,
         };
+        apps[idx] = updated;
         _applications.Value = apps;
+
+        // Persist status change to DB (fire-and-forget)
+        _ = PermitReady.PermitReadyDb.SaveApplicationAsync(app, updated);
     }
 
     // ── Officer submits a decision ────────────────────────────────────────
@@ -381,6 +518,9 @@ public partial class IkonDemoApp(IApp<SessionIdentity, ClientParameters> app)
         };
 
         UpdateApplicationStatus(appId, newStatus, string.IsNullOrWhiteSpace(notes) ? null : notes);
+
+        // Auto-post a notification message into the official thread
+        GenerateStatusNotificationMessage(appId, newStatus, string.IsNullOrWhiteSpace(notes) ? null : notes);
 
         _showDecisionPanel.Value  = false;
         _pendingDecision.Value    = "";
@@ -442,6 +582,161 @@ public partial class IkonDemoApp(IApp<SessionIdentity, ClientParameters> app)
         }
 
         _trackedApp.Value = found;
+    }
+
+    // ── Official messaging ────────────────────────────────────────────────
+
+    private void PostOfficialMessage(
+        string appId,
+        PermitReady.OfficialMessageType type,
+        string senderRole,
+        string content,
+        string? attachment = null)
+    {
+        var msgs = _officialMessages.Value.ToList();
+        var seq  = msgs.Count(m => m.ApplicationId == appId) + 1;
+        var msg  = new PermitReady.OfficialMessage(
+            MessageId:          $"MSG-{appId}-{seq:D3}",
+            ApplicationId:      appId,
+            Type:               type,
+            SenderRole:         senderRole,
+            Content:            content,
+            SentAt:             DateTime.UtcNow,
+            ReadByOfficer:      senderRole is "officer" or "system",
+            ReadByApplicant:    senderRole == "applicant",
+            AttachmentFileName: attachment);
+        msgs.Add(msg);
+        _officialMessages.Value = msgs;
+        _ = PermitReady.PermitReadyDb.SaveOfficialMessageAsync(_host, msg);
+    }
+
+    private void MarkThreadReadByOfficer(string appId)
+    {
+        _officialMessages.Value = _officialMessages.Value
+            .Select(m => m.ApplicationId == appId && !m.ReadByOfficer
+                ? m with { ReadByOfficer = true } : m)
+            .ToList();
+    }
+
+    private void MarkThreadReadByApplicant(string appId)
+    {
+        _officialMessages.Value = _officialMessages.Value
+            .Select(m => m.ApplicationId == appId && !m.ReadByApplicant
+                ? m with { ReadByApplicant = true } : m)
+            .ToList();
+    }
+
+    private int UnreadApplicantReplies(string appId) =>
+        _officialMessages.Value.Count(m =>
+            m.ApplicationId == appId &&
+            m.SenderRole == "applicant" &&
+            !m.ReadByOfficer);
+
+    private int UnreadOfficerMessages(string appId) =>
+        _officialMessages.Value.Count(m =>
+            m.ApplicationId == appId &&
+            m.SenderRole is "officer" or "system" &&
+            m.Type != PermitReady.OfficialMessageType.ProfileAccessNotice &&
+            !m.ReadByApplicant);
+
+    private void GenerateStatusNotificationMessage(
+        string appId,
+        PermitReady.ApplicationStatus status,
+        string? officerNotes)
+    {
+        string? content = status switch
+        {
+            PermitReady.ApplicationStatus.Approved =>
+                "Your application has been approved. You will receive an invitation to book a biometrics appointment shortly." +
+                (string.IsNullOrEmpty(officerNotes) ? "" : $"\n\nOfficer note: {officerNotes}"),
+
+            PermitReady.ApplicationStatus.SupplementRequested =>
+                "Additional information or documents are required before your application can be processed.\n\n" +
+                (string.IsNullOrEmpty(officerNotes) ? "Please log in and check the requested items." : $"Required items: {officerNotes}") +
+                "\n\nPlease reply to this message within 30 days to avoid your application being paused.",
+
+            PermitReady.ApplicationStatus.Rejected =>
+                "Following careful review, your application has not been approved at this time." +
+                (string.IsNullOrEmpty(officerNotes) ? "" : $"\n\nReason: {officerNotes}") +
+                "\n\nYou may appeal within 30 days or reapply with corrected documents. Contact Migri at info@migri.fi",
+
+            _ => null
+        };
+
+        if (content == null) return;
+
+        var msgType = status == PermitReady.ApplicationStatus.SupplementRequested
+            ? PermitReady.OfficialMessageType.SupplementRequest
+            : PermitReady.OfficialMessageType.StatusNotification;
+
+        PostOfficialMessage(appId, msgType, "officer", content);
+    }
+
+    // ── Profile access: confirm reason and navigate ───────────────────────
+
+    private async Task ConfirmProfileAccessAndNavigateAsync()
+    {
+        var reason = _accessReason.Value.Trim();
+        if (string.IsNullOrEmpty(reason))
+        {
+            _accessReasonError.Value = "Please state your reason for accessing this file.";
+            return;
+        }
+
+        var appId = _pendingAccessAppId.Value;
+
+        // Log access (in-memory + DB)
+        _profileAccessLog.Value = [.. _profileAccessLog.Value,
+            new PermitReady.ProfileAccessEntry(appId, DateTime.UtcNow, reason)];
+        _ = PermitReady.PermitReadyDb.SaveProfileAccessAsync(_host,
+            new PermitReady.ProfileAccessEntry(appId, DateTime.UtcNow, reason));
+
+        // Send profile access notice — applicant sees this in their message thread
+        PostOfficialMessage(appId, PermitReady.OfficialMessageType.ProfileAccessNotice, "system",
+            "A Migri officer has started reviewing your application. You will be notified here if any action is required.");
+
+        // Navigate to detail — reset chat state before navigating
+        _showAccessReasonDialog.Value = false;
+        _accessReason.Value           = "";
+        _accessReasonError.Value      = "";
+        _selectedAppId.Value          = appId;
+        _chatMessages.Value           = [];
+        _chatStreaming.Value           = false;
+        _messageThreadTab.Value       = "ai";
+        Navigate("detail");
+
+        // Initialize chat from the click handler (properly awaited in request context)
+        // This avoids the fire-and-forget-from-render lost-update bug
+        var app = _applications.Value.FirstOrDefault(a => a.ApplicationId == appId);
+        if (app != null)
+            await InitializeChatAsync(app);
+    }
+
+    // ── PDF document loading (returns base64 data URL — no HTTP endpoint needed) ──
+    private async Task<string> LoadDocDataUrlAsync(string appId, string filename, PermitReady.ApplicationInput input)
+    {
+        // 1. Try to load real uploaded bytes from DB
+        byte[]? bytes = await PermitReady.PermitReadyDb.GetDocumentBytesAsync(app, appId, filename);
+
+        // 2. Fall back to deterministic dummy PDF generated from application context
+        if (bytes == null || bytes.Length == 0)
+        {
+            var preview = PermitReady.DummyDocumentFactory.GetPreview(filename, input);
+            bytes = PermitReady.DummyDocumentFactory.GeneratePdf(preview);
+        }
+
+        return $"data:application/pdf;base64,{Convert.ToBase64String(bytes)}";
+    }
+
+    // ── Cache uploaded document bytes for DB persistence at commit time ───
+    private async Task CacheUploadedDocBytesAsync(string filename, string tempPath)
+    {
+        try
+        {
+            var bytes = await System.IO.File.ReadAllBytesAsync(tempPath);
+            _uploadedDocBytes.Value[filename] = bytes;
+        }
+        catch { }
     }
 
     // ── Seed demo data ────────────────────────────────────────────────────
@@ -619,7 +914,7 @@ public partial class IkonDemoApp(IApp<SessionIdentity, ClientParameters> app)
 }
 
 // Extension helper
-file static class StringExtensions
+internal static class StringExtensions
 {
     public static string? NullIfEmpty(this string s) => string.IsNullOrWhiteSpace(s) ? null : s;
 }

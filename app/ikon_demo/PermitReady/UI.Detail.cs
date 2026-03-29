@@ -9,10 +9,6 @@ public partial class IkonDemoApp
         if (app.Status == PermitReady.ApplicationStatus.Screened)
             UpdateApplicationStatus(app.ApplicationId, PermitReady.ApplicationStatus.UnderReview);
 
-        // Initialize chat when application first loads (messages empty)
-        if (_chatMessages.Value.Count == 0 && !_chatStreaming.Value)
-            _ = InitializeChatAsync(app);
-
         // ── Full-height side-by-side layout ──────────────────────────────
         view.Row(["h-full overflow-hidden"], content: view =>
         {
@@ -60,6 +56,34 @@ public partial class IkonDemoApp
                     view.Text(["text-xs text-muted-foreground"],
                         $"Submitted {app.SubmittedAt:yyyy-MM-dd HH:mm} UTC · {input.Category.DisplayName()}");
                 });
+
+                // Payment status banner
+                if (app.PaymentStatus == PermitReady.PaymentStatus.Pending)
+                {
+                    view.Row(["bg-amber-500/10 border border-amber-300 rounded-lg px-3 py-2.5 items-start gap-2"], content: view =>
+                    {
+                        view.Icon(["w-4 h-4 text-amber-600 shrink-0 mt-0.5"], name: "clock");
+                        view.Column(["gap-0.5"], content: view =>
+                        {
+                            view.Text(["text-xs font-semibold text-amber-700"], "Payment Pending — Processing Blocked");
+                            view.Text(["text-xs text-amber-700/80"],
+                                "Migri cannot process this application until the applicant completes payment.");
+                        });
+                    });
+                }
+                else if (app.FeeAmount > 0)
+                {
+                    view.Row(["bg-success-primary/10 border border-success rounded-lg px-3 py-2.5 items-center gap-2"], content: view =>
+                    {
+                        view.Icon(["w-4 h-4 text-success-primary shrink-0"], name: "check-circle");
+                        view.Column(["gap-0"], content: view =>
+                        {
+                            view.Text(["text-xs font-semibold text-success-primary"], $"Payment Confirmed · €{app.FeeAmount:N0}");
+                            if (!string.IsNullOrEmpty(app.PaymentReference))
+                                view.Text(["text-xs text-muted-foreground font-mono"], app.PaymentReference);
+                        });
+                    });
+                }
 
                 // Routing verdict
                 RenderRoutingBanner(view, result.Routing);
@@ -144,9 +168,13 @@ public partial class IkonDemoApp
                                 },
                                 onClick: async () =>
                                 {
-                                    _viewingDocAppId.Value = app.ApplicationId;
-                                    _viewingDocFile.Value  = docName;
-                                    _docViewerOpen.Value   = true;
+                                    _viewingDocAppId.Value   = app.ApplicationId;
+                                    _viewingDocFile.Value    = docName;
+                                    _viewingDocDataUrl.Value = "";   // show loading spinner
+                                    _docViewerOpen.Value     = true;
+                                    // Load PDF as base64 data URL (from DB or DummyDocuments)
+                                    _viewingDocDataUrl.Value = await LoadDocDataUrlAsync(
+                                        app.ApplicationId, docName, app.Input);
                                 });
                         }
                     }
@@ -333,7 +361,7 @@ public partial class IkonDemoApp
         });
     }
 
-    // ── RIGHT PANEL: AI Chat Interface ───────────────────────────────────
+    // ── RIGHT PANEL: AI Chat + Messages tabs ────────────────────────────────
 
     private void RenderChatPanel(UIView view, PermitReady.StoredApplication app)
     {
@@ -346,82 +374,114 @@ public partial class IkonDemoApp
                     view.Row(["items-center gap-2"], content: view =>
                     {
                         view.Box(["w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center"],
-                            content: v => v.Icon(["text-primary w-3.5 h-3.5"], name: "bot"));
+                            content: v => v.Icon(["text-primary w-3.5 h-3.5"],
+                                name: _messageThreadTab.Value == "messages" ? "mail" : "bot"));
                         view.Column(["gap-0"], content: view =>
                         {
-                            view.Text(["text-sm font-semibold"], "AI Analysis Assistant");
+                            view.Text(["text-sm font-semibold"],
+                                _messageThreadTab.Value == "messages" ? "Official Communications" : "AI Analysis Assistant");
                             view.Text(["text-xs text-muted-foreground"],
                                 $"Analysing {app.Input.Category.ShortName()} · {app.ApplicationId}");
                         });
                     });
 
-                    // Header buttons
-                    view.Row(["items-center gap-2"], content: view =>
+                    // Header buttons (AI tab only)
+                    if (_messageThreadTab.Value == "ai")
                     {
-                        // Guidelines button
-                        view.Button([Button.OutlineSm, "text-xs gap-1"],
-                            content: v =>
-                            {
-                                v.Icon(["w-3.5 h-3.5"], name: "book-open");
-                                v.Text([], "Guidelines");
-                            },
-                            disabled: _sourcesFetching.Value,
-                            onClick: async () => { await FetchGuidelinesForCategoryAsync(app.Input.Category); });
-
-                        // Audit log button
-                        view.Button([Button.GhostSm, "text-xs gap-1"],
-                            content: v =>
-                            {
-                                v.Icon(["w-3.5 h-3.5"], name: "history");
-                                v.Text([], "History");
-                            },
-                            onClick: async () => { _showAuditLog.Value = true; });
-
-                        // Restart chat button
-                        view.Button([Button.GhostSm, "text-xs gap-1"],
-                            content: v =>
-                            {
-                                v.Icon(["w-3.5 h-3.5"], name: "refresh-cw");
-                                v.Text([], "Reset");
-                            },
-                            onClick: async () =>
-                            {
-                                _assessmentCache.Remove(app.ApplicationId);
-                                _sourcesCache.Remove(app.ApplicationId);
-                                await InitializeChatAsync(app, forceRefresh: true);
-                            });
-                    });
-                });
-
-            // Context Sources section
-            RenderSourcesPanel(view, app);
-
-            // Messages area (fills remaining space)
-            view.ScrollArea(
-                rootStyle: ["flex-1 min-h-0"],
-                autoScroll: true,
-                autoScrollKey: _chatMessages.Value.Count.ToString(),
-                content: view =>
-                {
-                    view.Column(["px-5 py-4 gap-3 min-h-full"], content: view =>
-                    {
-                        if (_chatMessages.Value.Count == 0 && _chatStreaming.Value)
+                        view.Row(["items-center gap-2"], content: view =>
                         {
-                            // Initial loading state
-                            RenderThinkingBubble(view, "Analysing application...");
-                        }
+                            view.Button([Button.OutlineSm, "text-xs gap-1"],
+                                content: v => { v.Icon(["w-3.5 h-3.5"], name: "book-open"); v.Text([], "Guidelines"); },
+                                disabled: _sourcesFetching.Value,
+                                onClick: async () => { await FetchGuidelinesForCategoryAsync(app.Input.Category); });
 
-                        foreach (var msg in _chatMessages.Value)
-                            RenderMessage(view, msg);
+                            view.Button([Button.GhostSm, "text-xs gap-1"],
+                                content: v => { v.Icon(["w-3.5 h-3.5"], name: "history"); v.Text([], "History"); },
+                                onClick: async () => { _showAuditLog.Value = true; });
 
-                        // Streaming indicator after last message
-                        if (_chatStreaming.Value && _chatMessages.Value.Count > 0)
-                            RenderThinkingBubble(view, "Thinking...");
-                    });
+                            view.Button([Button.GhostSm, "text-xs gap-1"],
+                                content: v => { v.Icon(["w-3.5 h-3.5"], name: "refresh-cw"); v.Text([], "Reset"); },
+                                onClick: async () =>
+                                {
+                                    _assessmentCache.Remove(app.ApplicationId);
+                                    _sourcesCache.Remove(app.ApplicationId);
+                                    await InitializeChatAsync(app, forceRefresh: true);
+                                });
+                        });
+                    }
                 });
 
-            // Input area
-            RenderChatInput(view, app);
+            // ── Tab switcher ──────────────────────────────────────────────────
+            var unreadReplies = UnreadApplicantReplies(app.ApplicationId);
+            view.Row(["shrink-0 border-b border-border bg-background px-1 gap-0"], content: view =>
+            {
+                foreach (var (tab, label, icon) in new[] {
+                    ("ai",       "AI Analysis", "bot"),
+                    ("messages", "Messages",    "message-square"),
+                })
+                {
+                    var t = tab;
+                    var isActive = _messageThreadTab.Value == t;
+                    var unread   = t == "messages" ? unreadReplies : 0;
+
+                    view.Button(
+                        isActive
+                            ? ["h-9 px-4 rounded-none border-b-2 border-primary text-primary text-xs font-semibold gap-1.5 bg-transparent"]
+                            : ["h-9 px-4 rounded-none border-b-2 border-transparent text-muted-foreground text-xs font-medium gap-1.5 bg-transparent hover:text-foreground"],
+                        content: v =>
+                        {
+                            v.Icon(["w-3.5 h-3.5"], name: icon);
+                            v.Text([], label);
+                            if (unread > 0)
+                                v.Box(["min-w-[16px] h-4 rounded-full bg-error-primary flex items-center justify-center px-0.5"],
+                                    content: b => b.Text(["text-[9px] text-white font-bold"], unread.ToString()));
+                        },
+                        onClick: async () =>
+                        {
+                            _messageThreadTab.Value = t;
+                            if (t == "messages")
+                                MarkThreadReadByOfficer(app.ApplicationId);
+                        });
+                }
+            });
+
+            // ── Panel body: AI or Messages ────────────────────────────────────
+            if (_messageThreadTab.Value == "messages")
+            {
+                RenderMessageThread(view, app);
+            }
+            else
+            {
+                // Context Sources section
+                RenderSourcesPanel(view, app);
+
+                // Messages area (fills remaining space)
+                view.ScrollArea(
+                    rootStyle: ["flex-1 min-h-0"],
+                    autoScroll: true,
+                    autoScrollKey: $"{_chatMessages.Value.Count}-{_chatHasDraft.Value}",
+                    content: view =>
+                    {
+                        view.Column(["px-5 py-4 gap-3 min-h-full"], content: view =>
+                        {
+                            if (_chatMessages.Value.Count == 0 && _chatStreaming.Value)
+                                RenderThinkingBubble(view, "Analysing application...");
+
+                            foreach (var msg in _chatMessages.Value)
+                                RenderMessage(view, msg);
+
+                            if (_chatStreaming.Value && _chatMessages.Value.Count > 0)
+                                RenderThinkingBubble(view, "Thinking...");
+
+                            // Draft action card — shown after AI response when draft detected
+                            if (_chatHasDraft.Value && !_chatStreaming.Value)
+                                RenderDraftActionCard(view, app);
+                        });
+                    });
+
+                // Input area
+                RenderChatInput(view, app);
+            }
         });
     }
 
@@ -618,19 +678,19 @@ public partial class IkonDemoApp
 
             view.Column([
                 isUser
-                    ? "bg-primary text-primary-foreground rounded-2xl rounded-br-sm px-4 py-2.5 max-w-[75%]"
+                    ? "bg-primary/10 border border-primary/20 text-foreground rounded-2xl rounded-br-sm px-4 py-2.5 max-w-[75%]"
                     : "bg-background border border-border rounded-2xl rounded-bl-sm px-4 py-3 max-w-[85%] shadow-sm",
                 "gap-1"
             ], content: view =>
             {
                 if (isUser)
-                    view.Text(["text-sm leading-relaxed"], msg.Content);
+                    view.Text(["text-sm leading-relaxed text-foreground"], msg.Content);
                 else
                     view.Markdown(["text-sm leading-relaxed prose prose-sm max-w-none dark:prose-invert"],
                         content: msg.Content);
 
                 view.Text([
-                    isUser ? "text-primary-foreground/60" : "text-muted-foreground",
+                    "text-muted-foreground",
                     "text-[10px]"
                 ], msg.Timestamp.ToString("HH:mm"));
             });
@@ -658,6 +718,99 @@ public partial class IkonDemoApp
                         v.Text(["text-sm text-muted-foreground"], label);
                     });
                 });
+        });
+    }
+
+    // ── Draft action card ─────────────────────────────────────────────────
+
+    private void RenderDraftActionCard(UIView view, PermitReady.StoredApplication app)
+    {
+        bool isSupplementRequest = _chatDraftType.Value == "supplement_request";
+
+        view.Column(["mt-1 rounded-xl border-2 border-primary/30 bg-primary/5 overflow-hidden"], content: view =>
+        {
+            // Header stripe
+            view.Row(["px-4 py-2.5 bg-primary/10 items-center gap-2 border-b border-primary/20"], content: view =>
+            {
+                view.Box(["w-6 h-6 rounded-lg bg-primary/20 flex items-center justify-center shrink-0"],
+                    content: v => v.Icon(["text-primary w-3.5 h-3.5"], name: isSupplementRequest ? "file-plus" : "send"));
+                view.Column(["gap-0 flex-1"], content: view =>
+                {
+                    view.Text(["text-xs font-semibold text-primary"],
+                        isSupplementRequest ? "Supplement request detected" : "Draft message detected");
+                    view.Text(["text-[10px] text-primary/70"],
+                        "AI has prepared a message for the applicant · Review before sending");
+                });
+                // Dismiss (×)
+                view.Button([Button.GhostSm, "w-6 h-6 p-0 rounded-full text-primary/60 hover:text-primary"],
+                    content: v => v.Icon(["w-3.5 h-3.5"], name: "x"),
+                    onClick: async () =>
+                    {
+                        _chatHasDraft.Value       = false;
+                        _chatDraftContent.Value   = "";
+                        _chatDraftType.Value      = "none";
+                    });
+            });
+
+            // Preview of the draft content
+            view.Box(["px-4 py-3 max-h-[140px] overflow-y-auto"], content: view =>
+            {
+                view.Text(["text-xs text-foreground/80 leading-relaxed whitespace-pre-wrap font-mono"],
+                    _chatDraftContent.Value);
+            });
+
+            // Action buttons
+            view.Row(["px-4 py-2.5 gap-2 border-t border-primary/15 justify-end bg-background/50"], content: view =>
+            {
+                view.Button([Button.OutlineMd, "gap-2 text-xs"],
+                    content: v =>
+                    {
+                        v.Icon(["w-3.5 h-3.5"], name: "edit-2");
+                        v.Text([], "Edit & Send");
+                    },
+                    onClick: async () =>
+                    {
+                        // Pre-fill compose panel, switch to Messages tab
+                        _composeMessageType.Value   = isSupplementRequest ? "SupplementRequest" : "GeneralMessage";
+                        _composeMessageBody.Value   = _chatDraftContent.Value;
+                        _showComposeMessage.Value   = true;
+                        _messageThreadTab.Value     = "messages";
+                        // Clear draft card
+                        _chatHasDraft.Value         = false;
+                        _chatDraftContent.Value     = "";
+                        _chatDraftType.Value        = "none";
+                    });
+
+                view.Button([Button.PrimaryMd, "gap-2 text-xs"],
+                    content: v =>
+                    {
+                        v.Icon(["w-3.5 h-3.5"], name: "send");
+                        v.Text([], "Send to Applicant");
+                    },
+                    onClick: async () =>
+                    {
+                        var msgType = isSupplementRequest
+                            ? PermitReady.OfficialMessageType.SupplementRequest
+                            : PermitReady.OfficialMessageType.GeneralMessage;
+
+                        PostOfficialMessage(app.ApplicationId, msgType, "officer",
+                            _chatDraftContent.Value.Trim(), null);
+
+                        // Auto-advance status for supplement requests
+                        if (isSupplementRequest &&
+                            app.Status is not PermitReady.ApplicationStatus.SupplementRequested)
+                        {
+                            UpdateApplicationStatus(app.ApplicationId,
+                                PermitReady.ApplicationStatus.SupplementRequested);
+                        }
+
+                        // Switch to Messages tab so officer sees the sent message
+                        _messageThreadTab.Value   = "messages";
+                        _chatHasDraft.Value       = false;
+                        _chatDraftContent.Value   = "";
+                        _chatDraftType.Value      = "none";
+                    });
+            });
         });
     }
 

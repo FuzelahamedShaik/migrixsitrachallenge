@@ -34,11 +34,11 @@ public partial class IkonDemoApp
             if (!analysis.IsPassport)
             {
                 // Mark as failed — wrong document type
-                _passportDoc.Value = _passportDoc.Value! with
+                UpdateDocInList(_passportDoc, fileName, d => d with
                 {
                     Status = PermitReady.DocStatus.Failed,
                     Alerts = ["This document does not appear to be a passport. Please upload the correct file."]
-                };
+                });
                 return;
             }
 
@@ -76,21 +76,21 @@ public partial class IkonDemoApp
             if (!string.IsNullOrEmpty(analysis.Notes) && analysis.Notes.Length > 5)
                 alerts.Add(analysis.Notes);
 
-            _passportDoc.Value = _passportDoc.Value! with
+            UpdateDocInList(_passportDoc, fileName, d => d with
             {
-                Status   = status,
-                Alerts   = alerts,
+                Status    = status,
+                Alerts    = alerts,
                 Extracted = extracted
-            };
+            });
         }
         catch (Exception ex)
         {
             Log.Instance.Warning($"Passport verification failed: {ex.Message}");
-            _passportDoc.Value = _passportDoc.Value! with
+            UpdateDocInList(_passportDoc, fileName, d => d with
             {
                 Status = PermitReady.DocStatus.Warning,
                 Alerts = ["Document uploaded but could not be verified automatically. Please ensure it is a valid passport."]
-            };
+            });
         }
     }
 
@@ -127,11 +127,11 @@ public partial class IkonDemoApp
 
             if (!analysis.IsBankStatement)
             {
-                _bankStatementDoc.Value = _bankStatementDoc.Value! with
+                UpdateDocInList(_bankStatementDoc, fileName, d => d with
                 {
                     Status = PermitReady.DocStatus.Failed,
                     Alerts = ["This document does not appear to be a bank statement. Please upload the correct file."]
-                };
+                });
                 return;
             }
 
@@ -161,22 +161,227 @@ public partial class IkonDemoApp
             if (!string.IsNullOrEmpty(analysis.Notes) && analysis.Notes.Length > 5)
                 alerts.Add(analysis.Notes);
 
-            _bankStatementDoc.Value = _bankStatementDoc.Value! with
+            UpdateDocInList(_bankStatementDoc, fileName, d => d with
             {
                 Status    = status,
                 Alerts    = alerts,
                 Extracted = extracted
-            };
+            });
         }
         catch (Exception ex)
         {
             Log.Instance.Warning($"Bank statement verification failed: {ex.Message}");
-            _bankStatementDoc.Value = _bankStatementDoc.Value! with
+            UpdateDocInList(_bankStatementDoc, fileName, d => d with
             {
                 Status = PermitReady.DocStatus.Warning,
                 Alerts = ["Document uploaded but could not be verified automatically."]
-            };
+            });
         }
+    }
+
+    // ── Employment contract verification ──────────────────────────────────
+    internal async Task VerifyEmploymentContractAsync(
+        string tempFilePath, string fileName,
+        string? declaredEmployer, string? declaredJobTitle, decimal? declaredSalary, string? declaredRef)
+    {
+        try
+        {
+            var text = ExtractPdfText(tempFilePath);
+
+            var (analysis, _) = await Emerge.Run<PermitReady.EmploymentContractAnalysis>(
+                LLMModel.Claude46Sonnet, new KernelContext(), pass =>
+                {
+                    pass.SystemPrompt = "You are a document verification assistant for the Finnish Immigration Service. Extract structured data from employment contracts and job offer letters. Return only valid JSON.";
+                    pass.Command = $"""
+                        Analyze the following text extracted from a PDF document named "{fileName}".
+                        Determine if this is an employment contract or job offer letter and extract key fields.
+
+                        Document text:
+                        {text.Truncate(4000)}
+
+                        Return JSON matching the schema:
+                        {pass.JsonSchema}
+
+                        For MonthlySalary, extract the gross monthly figure in EUR (0 if not stated or cannot be determined).
+                        For StartDate use "YYYY-MM-DD" format (empty string if not found).
+                        For ContractRef, extract any reference/agreement number (empty if none).
+                        """;
+                    pass.Temperature = 0.1;
+                }).FinalAsync();
+
+            var alerts = new List<string>();
+            var extracted = new Dictionary<string, string>();
+            var status = PermitReady.DocStatus.Verified;
+
+            if (!analysis.IsContract)
+            {
+                UpdateDocInList(_contractDoc, fileName, d => d with
+                {
+                    Status = PermitReady.DocStatus.Warning,
+                    Alerts = [$"This does not appear to be an employment contract. Please verify you uploaded the correct file.{(string.IsNullOrWhiteSpace(analysis.Notes) ? "" : " " + analysis.Notes)}"]
+                });
+                return;
+            }
+
+            // Store all extracted fields
+            if (!string.IsNullOrWhiteSpace(analysis.EmployerName))  extracted["EmployerName"]  = analysis.EmployerName;
+            if (!string.IsNullOrWhiteSpace(analysis.JobTitle))       extracted["JobTitle"]       = analysis.JobTitle;
+            if (analysis.MonthlySalary > 0)                          extracted["MonthlySalary"]  = analysis.MonthlySalary.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
+            if (!string.IsNullOrWhiteSpace(analysis.ContractRef))    extracted["ContractRef"]    = analysis.ContractRef;
+            if (!string.IsNullOrWhiteSpace(analysis.StartDate))      extracted["StartDate"]      = analysis.StartDate;
+
+            // Cross-validate against form declarations
+            if (!string.IsNullOrWhiteSpace(analysis.EmployerName) && !string.IsNullOrWhiteSpace(declaredEmployer))
+            {
+                if (!NamesLooseMatch(analysis.EmployerName, declaredEmployer))
+                {
+                    alerts.Add($"Employer mismatch: contract shows \"{analysis.EmployerName}\" but form declares \"{declaredEmployer}\". Verify the correct employer.");
+                    status = PermitReady.DocStatus.Warning;
+                }
+            }
+
+            if (analysis.MonthlySalary > 0 && declaredSalary.HasValue && declaredSalary > 0)
+            {
+                var diff = Math.Abs(analysis.MonthlySalary - declaredSalary.Value) / declaredSalary.Value;
+                if (diff > 0.1m)
+                {
+                    alerts.Add($"Salary mismatch: contract states €{analysis.MonthlySalary:N0}/mo but form declares €{declaredSalary:N0}/mo ({diff * 100:N0}% difference).");
+                    status = PermitReady.DocStatus.Warning;
+                }
+                else
+                {
+                    alerts.Add($"Salary verified: contract confirms €{analysis.MonthlySalary:N0}/mo gross monthly salary.");
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(analysis.Notes) && analysis.Notes.Length > 5)
+                alerts.Add(analysis.Notes);
+
+            if (alerts.Count == 0)
+                alerts.Add($"Employment contract verified. Employer: {analysis.EmployerName}, Salary: €{analysis.MonthlySalary:N0}/mo.");
+
+            UpdateDocInList(_contractDoc, fileName, d => d with { Status = status, Alerts = alerts, Extracted = extracted });
+        }
+        catch (Exception ex)
+        {
+            Log.Instance.Warning($"Employment contract verification failed: {ex.Message}");
+            UpdateDocInList(_contractDoc, fileName, d => d with
+            {
+                Status = PermitReady.DocStatus.Warning,
+                Alerts = ["Document uploaded but could not be verified automatically. Please ensure it is a valid employment contract."]
+            });
+        }
+    }
+
+    // ── Salary proof verification ─────────────────────────────────────────
+    internal async Task VerifySalaryProofAsync(
+        string tempFilePath, string fileName,
+        string? declaredEmployer, decimal? declaredSalary)
+    {
+        try
+        {
+            var text = ExtractPdfText(tempFilePath);
+
+            var (analysis, _) = await Emerge.Run<PermitReady.SalaryProofAnalysis>(
+                LLMModel.Claude46Sonnet, new KernelContext(), pass =>
+                {
+                    pass.SystemPrompt = "You are a document verification assistant for the Finnish Immigration Service. Extract structured data from salary payslips, salary certificates, and income evidence documents. Return only valid JSON.";
+                    pass.Command = $"""
+                        Analyze the following text extracted from a PDF document named "{fileName}".
+                        Determine if this is a salary payslip, salary certificate, or income evidence document and extract key fields.
+
+                        Document text:
+                        {text.Truncate(4000)}
+
+                        Return JSON matching the schema:
+                        {pass.JsonSchema}
+
+                        For MonthlyAmount, extract the gross monthly salary or income figure in EUR (0 if not determinable).
+                        For Period, use format "YYYY-MM" or descriptive period like "Q1 2024" (empty if not found).
+                        """;
+                    pass.Temperature = 0.1;
+                }).FinalAsync();
+
+            var alerts = new List<string>();
+            var extracted = new Dictionary<string, string>();
+            var status = PermitReady.DocStatus.Verified;
+
+            if (!analysis.IsSalaryProof)
+            {
+                UpdateDocInList(_salaryProofDoc, fileName, d => d with
+                {
+                    Status = PermitReady.DocStatus.Warning,
+                    Alerts = ["This document does not appear to be a salary payslip or income certificate. Please upload the correct file."]
+                });
+                return;
+            }
+
+            if (!string.IsNullOrWhiteSpace(analysis.EmployerName)) extracted["EmployerName"]  = analysis.EmployerName;
+            if (analysis.MonthlyAmount > 0)                         extracted["MonthlyAmount"] = analysis.MonthlyAmount.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
+            if (!string.IsNullOrWhiteSpace(analysis.Period))        extracted["Period"]        = analysis.Period;
+
+            // Cross-validate salary figure
+            if (analysis.MonthlyAmount > 0 && declaredSalary.HasValue && declaredSalary > 0)
+            {
+                var diff = Math.Abs(analysis.MonthlyAmount - declaredSalary.Value) / declaredSalary.Value;
+                if (diff > 0.15m)
+                {
+                    alerts.Add($"Salary mismatch: payslip shows €{analysis.MonthlyAmount:N0}/mo but form declares €{declaredSalary:N0}/mo ({diff * 100:N0}% difference). Clarification required.");
+                    status = PermitReady.DocStatus.Warning;
+                }
+                else
+                {
+                    alerts.Add($"Salary verified: payslip confirms €{analysis.MonthlyAmount:N0}/mo from {(string.IsNullOrWhiteSpace(analysis.EmployerName) ? "employer" : analysis.EmployerName)}.");
+                }
+            }
+
+            // Cross-validate employer name
+            if (!string.IsNullOrWhiteSpace(analysis.EmployerName) && !string.IsNullOrWhiteSpace(declaredEmployer))
+            {
+                if (!NamesLooseMatch(analysis.EmployerName, declaredEmployer))
+                {
+                    alerts.Add($"Employer mismatch: payslip shows \"{analysis.EmployerName}\" but form declares \"{declaredEmployer}\".");
+                    status = PermitReady.DocStatus.Warning;
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(analysis.Notes) && analysis.Notes.Length > 5)
+                alerts.Add(analysis.Notes);
+
+            UpdateDocInList(_salaryProofDoc, fileName, d => d with { Status = status, Alerts = alerts, Extracted = extracted });
+        }
+        catch (Exception ex)
+        {
+            Log.Instance.Warning($"Salary proof verification failed: {ex.Message}");
+            UpdateDocInList(_salaryProofDoc, fileName, d => d with
+            {
+                Status = PermitReady.DocStatus.Warning,
+                Alerts = ["Document uploaded but could not be verified automatically."]
+            });
+        }
+    }
+
+    // ── List update helper ────────────────────────────────────────────────────
+    private static void UpdateDocInList(
+        ClientReactive<List<PermitReady.UploadedDoc>> slot,
+        string fileName,
+        Func<PermitReady.UploadedDoc, PermitReady.UploadedDoc> updater)
+    {
+        var list = slot.Value;
+        var idx  = list.FindIndex(d => d.FileName == fileName);
+        if (idx < 0) return;
+        var newList = new List<PermitReady.UploadedDoc>(list);
+        newList[idx] = updater(newList[idx]);
+        slot.Value = newList;
+    }
+
+    // Loose name match: tokens of one string appear in the other (handles "Acme Oy" vs "ACME OY LTD")
+    private static bool NamesLooseMatch(string a, string b)
+    {
+        var ta = a.ToUpperInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var tb = b.ToUpperInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var (shorter, longer) = ta.Length <= tb.Length ? (ta, tb) : (tb, ta);
+        return shorter.Any(t => longer.Any(l => l.StartsWith(t) || t.StartsWith(l)));
     }
 
     // ── Generic document verification (acceptance letter, contract, etc.) ─

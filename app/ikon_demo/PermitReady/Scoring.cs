@@ -136,7 +136,126 @@ public static class ScoringService
             risks.Add("Sponsor information missing for family permit");
         }
 
+        // Cross-field validation using AI-extracted document data
+        if (input.ExtractedDocFields is { Count: > 0 } extracted)
+            score += CrossValidate(input, extracted, risks);
+
         return Math.Clamp(score, 0, 100);
+    }
+
+    // ── Cross-field validation using extracted document data ──────────────
+    private static int CrossValidate(ApplicationInput input, Dictionary<string, string> extracted, List<string> risks)
+    {
+        int score = 0;
+
+        // ── Bank balance vs declared financial figure ─────────────────────
+        if (extracted.TryGetValue("bank_averagemonthlybalance", out var balStr) &&
+            decimal.TryParse(balStr, System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture, out var bankBalance) &&
+            bankBalance >= 0)
+        {
+            // Study / trainee: declared monthly funds must be backed by bank balance
+            if (input.Group == PermitGroup.Study && input.FundsAmount is > 0)
+            {
+                var ratio = bankBalance / input.FundsAmount.Value;
+                if (ratio < 0.5m)
+                {
+                    score += 25;
+                    risks.Add($"Critical financial mismatch: bank statement shows avg €{bankBalance:N0}/mo but declared monthly funds are €{input.FundsAmount:N0}/mo ({(int)((1 - ratio) * 100)}% shortfall). Possible misrepresentation.");
+                }
+                else if (ratio < 0.8m)
+                {
+                    score += 10;
+                    risks.Add($"Bank balance (avg €{bankBalance:N0}/mo) is below declared monthly funds (€{input.FundsAmount:N0}/mo). Request updated statement or clarification.");
+                }
+            }
+
+            // Self-employed: claimed monthly income should be reflected in account activity
+            if (input.Category == PermitCategory.SelfEmployed && input.SalaryAmount is > 0)
+            {
+                var ratio = bankBalance / input.SalaryAmount.Value;
+                if (ratio < 0.3m)
+                {
+                    score += 20;
+                    risks.Add($"Self-employed income mismatch: bank avg €{bankBalance:N0}/mo is significantly below declared income €{input.SalaryAmount:N0}/mo. Claimed income appears unsubstantiated.");
+                }
+                else if (ratio < 0.6m)
+                {
+                    score += 10;
+                    risks.Add($"Self-employed: bank avg €{bankBalance:N0}/mo is moderately below declared income €{input.SalaryAmount:N0}/mo. Supporting business financials recommended.");
+                }
+            }
+
+            // Working holiday: declared savings must match bank balance directly
+            if (input.Category == PermitCategory.WorkingHoliday && input.FundsAmount is > 0)
+            {
+                if (bankBalance < input.FundsAmount.Value * 0.7m)
+                {
+                    score += 20;
+                    risks.Add($"Working holiday: declared available savings €{input.FundsAmount:N0} not supported by bank evidence (avg €{bankBalance:N0}/mo). Significant shortfall.");
+                }
+            }
+
+            // Work permits (employee): unusually low savings despite stable employment claim
+            if (input.Group == PermitGroup.Work &&
+                input.Category is not PermitCategory.SelfEmployed and not PermitCategory.WorkingHoliday &&
+                input.SalaryAmount is > 0 && bankBalance < 200m)
+            {
+                score += 10;
+                risks.Add($"Work permit: unusually low bank balance (avg €{bankBalance:N0}/mo) for applicant claiming €{input.SalaryAmount:N0}/mo employment. Financial stability concern.");
+            }
+        }
+
+        // ── Passport holder name vs applicant name ────────────────────────
+        if (extracted.TryGetValue("passport_holdername", out var docName) &&
+            !string.IsNullOrWhiteSpace(docName) &&
+            !string.IsNullOrWhiteSpace(input.FullName))
+        {
+            if (!NamesMatch(input.FullName, docName))
+            {
+                score += 20;
+                risks.Add($"Name mismatch: application says \"{input.FullName}\" but passport shows \"{docName}\". Verify identity — could indicate fraud or name change.");
+            }
+        }
+
+        // ── Passport nationality vs declared nationality ───────────────────
+        if (extracted.TryGetValue("passport_nationality", out var docNat) &&
+            !string.IsNullOrWhiteSpace(docNat) &&
+            !string.IsNullOrWhiteSpace(input.Nationality))
+        {
+            if (!NationalitiesMatch(input.Nationality, docNat))
+            {
+                score += 15;
+                risks.Add($"Nationality mismatch: declared \"{input.Nationality}\" but passport nationality is \"{docNat}\". Clarification required.");
+            }
+        }
+
+        return score;
+    }
+
+    // Lenient name comparison: all tokens in the shorter name must appear in the longer
+    private static bool NamesMatch(string a, string b)
+    {
+        static string[] Tokens(string s) => s.ToUpperInvariant()
+            .Replace("-", " ").Replace("'", "")
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+        var ta = Tokens(a);
+        var tb = Tokens(b);
+        var (shorter, longer) = ta.Length <= tb.Length ? (ta, tb) : (tb, ta);
+        return shorter.All(t => longer.Any(l => l.StartsWith(t) || t.StartsWith(l)));
+    }
+
+    // Nationality comparison tolerates abbreviations and different wordings (e.g. "Indian" vs "India")
+    private static bool NationalitiesMatch(string a, string b)
+    {
+        a = a.ToUpperInvariant().Trim();
+        b = b.ToUpperInvariant().Trim();
+        if (a == b) return true;
+        // Allow one containing the other (e.g. "INDIAN" contains "INDIA")
+        if (a.Contains(b) || b.Contains(a)) return true;
+        // Match on first 4 chars (most country roots are distinct at 4 chars)
+        return a.Length >= 4 && b.Length >= 4 && a[..4] == b[..4];
     }
 
     private static bool HasField(ApplicationInput input, string fieldName) => fieldName switch

@@ -2,6 +2,7 @@ import './app.css';
 
 import { AuthProvider, ConnectionStateRenderer, IkonUiSurface, type Toast, useIkonApp, useLazyFont, useToasts } from '@ikonai/sdk-react-ui';
 import { registerStandardUiModule, registerLucideIconsModule } from '@ikonai/sdk-react-ui-standard';
+import { registerPdfViewerModule } from './lib/pdf-viewer/pdf-viewer-module';
 import { AuthGuard } from './auth/auth-guard';
 import { authConfig } from './env';
 import { I18nProvider, useI18n } from './i18n/i18n';
@@ -32,7 +33,7 @@ function ConnectedApp() {
   const { toasts, dismissToast } = useToasts();
 
   const app = useIkonApp({
-    modules: [registerStandardUiModule, registerLucideIconsModule],
+    modules: [registerStandardUiModule, registerLucideIconsModule, registerPdfViewerModule],
   });
 
   if (app.accessDeniedReason) {

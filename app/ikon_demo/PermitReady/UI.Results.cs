@@ -19,13 +19,29 @@ public partial class IkonDemoApp
                 view.Button([Button.GhostSm, "w-fit -ml-2"], "← Back to Home",
                     onClick: async () => Navigate("applicant_home"));
 
+                // ── Payment confirmation banner ────────────────────────────
+                var submitted = _applications.Value.FirstOrDefault(a => a.ApplicationId == _lastAppId.Value);
+                view.Row(["bg-success-primary/10 border border-success rounded-xl px-5 py-4 items-start gap-4"], content: view =>
+                {
+                    view.Box(["w-10 h-10 rounded-full bg-success-primary flex items-center justify-center shrink-0"],
+                        content: v => v.Icon(["w-5 h-5 text-white"], name: "check-circle"));
+                    view.Column(["gap-1 flex-1"], content: view =>
+                    {
+                        view.Text(["font-semibold text-success-primary"], "Payment Confirmed — Application Submitted to Migri");
+                        view.Text(["text-sm text-muted-foreground"],
+                            submitted?.PaymentReference != null
+                                ? $"Payment reference: {submitted.PaymentReference} · €{submitted.FeeAmount:N0} charged"
+                                : "Your payment has been processed and your application is now in the officer queue.");
+                    });
+                });
+
                 // Header + App ID
                 view.Row(["items-start justify-between gap-4 flex-wrap"], content: view =>
                 {
                     view.Column(["gap-1"], content: view =>
                     {
-                        view.Text([Text.H2], "Application Checked");
-                        view.Text(["text-muted-foreground"], $"Results for {input.FullName} · {input.Category.DisplayName()}");
+                        view.Text([Text.H2], "Application Submitted");
+                        view.Text(["text-muted-foreground"], $"{input.FullName} · {input.Category.DisplayName()}");
                     });
 
                     // Reference number pill (applicant needs this for tracking)
@@ -112,11 +128,11 @@ public partial class IkonDemoApp
                     view.Text(["text-sm text-muted-foreground"], result.Routing switch
                     {
                         PermitReady.RoutingType.FastTrack =>
-                            "Your application is complete and looks great! It has been fast-tracked for automated processing. You'll receive a decision by post and in EnterFinland within 6–8 weeks.",
+                            "Your payment is confirmed and your application is complete. It has been fast-tracked for officer review. You'll receive a decision by post and in EnterFinland within 6–8 weeks.",
                         PermitReady.RoutingType.SupplementRequested =>
-                            "Your application is mostly complete. A supplement request email has been generated above — Migri will contact you with the details. Address the missing items within 30 days.",
+                            "Your payment is confirmed. Migri will review your application and may send a supplement request if additional documents are needed. Address any requests within 30 days.",
                         _ =>
-                            "Your application has been referred to a Migri specialist for manual review. A case officer will contact you within 5 business days. No action is required from you at this stage."
+                            "Your payment is confirmed. Your application has been referred to a Migri specialist for manual review. A case officer will contact you within 5 business days."
                     });
                 });
 
@@ -170,12 +186,12 @@ public partial class IkonDemoApp
         _salaryAmount.Value   = "";
         _contractRef.Value    = "";
         _workStartDate.Value  = "";
-        _passportDoc.Value      = null;
-        _acceptanceDoc.Value    = null;
-        _transcriptDoc.Value    = null;
-        _bankStatementDoc.Value = null;
-        _contractDoc.Value      = null;
-        _salaryProofDoc.Value   = null;
+        _passportDoc.Value      = [];
+        _acceptanceDoc.Value    = [];
+        _transcriptDoc.Value    = [];
+        _bankStatementDoc.Value = [];
+        _contractDoc.Value      = [];
+        _salaryProofDoc.Value   = [];
         _formError.Value      = "";
         _lastResult.Value     = null;
         _lastInput.Value      = null;

@@ -18,6 +18,9 @@ public partial class IkonDemoApp
         {
             view.Column([Container.Md, "py-10 px-4 gap-6 min-h-full"], content: view =>
             {
+                // ── Journey stepper ───────────────────────────────────────
+                RenderReviewStepper(view);
+
                 // ── Page header ───────────────────────────────────────────
                 view.Row(["items-center gap-3"], content: view =>
                 {
@@ -155,17 +158,59 @@ public partial class IkonDemoApp
                         view.Box(["flex-1 h-px bg-border"]);
                     });
 
-                    // Secondary: submit anyway (with consequence label)
+                    // Secondary: proceed to payment despite issues
                     view.Column([Card.Default, "p-4 gap-3"], content: view =>
                     {
                         view.Text(["text-sm text-muted-foreground text-center"],
-                            "If you believe your information is correct and complete, you can still submit. Migri may contact you for clarification.");
+                            "If you believe your information is correct and complete, you can proceed to payment. Migri may contact you for clarification.");
 
-                        view.Button([Button.SecondaryMd, "w-full"], "Submit Anyway →",
+                        view.Button([Button.SecondaryMd, "w-full"], "Proceed to Payment →",
                             onClick: async () => ConfirmSubmissionAsync());
                     });
                 });
             });
+        });
+    }
+
+    // ── Review step indicator ─────────────────────────────────────────────
+
+    private static void RenderReviewStepper(UIView view)
+    {
+        var steps = new[] { "Fill Application", "Review", "Payment", "Submitted" };
+        const int current = 1; // Review is step index 1
+
+        view.Row(["items-start justify-center gap-0"], content: view =>
+        {
+            for (int i = 0; i < steps.Length; i++)
+            {
+                bool done   = i < current;
+                bool active = i == current;
+
+                view.Column(["items-center gap-1 w-24"], content: view =>
+                {
+                    view.Box([
+                        done   ? "w-8 h-8 rounded-full bg-success-primary flex items-center justify-center" :
+                        active ? "w-8 h-8 rounded-full bg-warning-primary flex items-center justify-center ring-4 ring-warning/20" :
+                                 "w-8 h-8 rounded-full bg-muted border-2 border-border flex items-center justify-center"
+                    ], content: v =>
+                    {
+                        if (done)
+                            v.Icon(["w-4 h-4 text-white"], name: "check");
+                        else
+                            v.Text([active ? "text-xs font-bold text-white" : "text-xs text-muted-foreground"],
+                                (i + 1).ToString());
+                    });
+                    view.Text([
+                        active ? "text-[11px] font-semibold text-warning-primary text-center" :
+                        done   ? "text-[11px] text-success-primary text-center" :
+                                 "text-[11px] text-muted-foreground text-center"
+                    ], steps[i]);
+                });
+
+                if (i < steps.Length - 1)
+                    view.Box([done ? "w-8 h-0.5 bg-success-primary mt-4 shrink-0"
+                                   : "w-8 h-0.5 bg-border mt-4 shrink-0"]);
+            }
         });
     }
 
