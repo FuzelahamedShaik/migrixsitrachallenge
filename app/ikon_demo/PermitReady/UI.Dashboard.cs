@@ -43,13 +43,13 @@ public partial class IkonDemoApp
 
         view.Column(["h-full flex flex-col overflow-y-auto"], content: view =>
         {
-            // Dashboard header
-            view.Row(["px-8 py-5 border-b border-border justify-between items-center shrink-0"], content: view =>
+            // Dashboard header — clean and minimal
+            view.Row(["px-8 py-6 border-b border-neutral-200 justify-between items-start shrink-0"], content: view =>
             {
-                view.Column(["gap-0.5"], content: view =>
+                view.Column(["gap-1.5"], content: view =>
                 {
-                    view.Text([Text.H2], "Applications Dashboard");
-                    view.Text(["text-sm text-muted-foreground"], $"{apps.Count} total applications · Avg risk {avgRisk}/100 · Avg completeness {avgComp}/100");
+                    view.Text([Text.H1, "text-3xl font-bold"], "Applications");
+                    view.Text(["text-base text-neutral-600"], $"{apps.Count} total · Avg risk {avgRisk}/100 · Avg completeness {avgComp}%");
                 });
             });
 
@@ -61,23 +61,23 @@ public partial class IkonDemoApp
             if (_showFilters.Value)
                 RenderDashboardFilters(view, _applications.Value);
 
-            // KPI cards
-            view.Row(["px-8 py-4 gap-4 border-b border-border flex-wrap shrink-0"], content: view =>
+            // KPI cards — refined and spacious
+            view.Row(["px-8 py-6 gap-4 border-b border-neutral-200 flex-wrap shrink-0"], content: view =>
             {
                 view.Button([Button.OutlineSm, "gap-2 shrink-0"],
                     onClick: async () => { _showFilters.Value = !_showFilters.Value; },
                     content: v =>
                     {
                         v.Icon(["w-4 h-4"], name: _showFilters.Value ? "chevron-up" : "sliders");
-                        v.Text([], _showFilters.Value ? "Hide Filters" : "Filters");
+                        v.Text([], _showFilters.Value ? "Hide Filters" : "Show Filters");
                     });
 
                 KpiCard(view, apps.Count.ToString(),       "Total",          "layers",       "text-foreground");
-                KpiCard(view, fastTrack.Count.ToString(),  "Fast Track",     "zap",          "text-success-primary");
-                KpiCard(view, supplement.Count.ToString(), "Supplement",     "alert-circle", "text-warning-primary");
-                KpiCard(view, specialist.Count.ToString(), "Specialist",     "user-check",   "text-error-primary");
+                KpiCard(view, fastTrack.Count.ToString(),  "Fast Track",     "zap",          "text-emerald-600");
+                KpiCard(view, supplement.Count.ToString(), "Supplement",     "alert-circle", "text-amber-600");
+                KpiCard(view, specialist.Count.ToString(), "Specialist",     "user-check",   "text-rose-600");
                 if (unpaid.Count > 0)
-                    KpiCard(view, unpaid.Count.ToString(), "Awaiting Payment", "clock",      "text-amber-600");
+                    KpiCard(view, unpaid.Count.ToString(), "Unpaid",        "clock",        "text-blue-600");
             });
 
             // Tabs
@@ -395,13 +395,14 @@ public partial class IkonDemoApp
 
     private static void KpiCard(UIView view, string value, string label, string icon, string color)
     {
-        view.Row([Card.Default, "px-4 py-3 items-center gap-3 min-w-[130px]"], content: view =>
+        view.Row([Card.Default, "px-5 py-4 items-center gap-4 min-w-[140px] border-neutral-200"], content: view =>
         {
-            view.Icon([color, "w-5 h-5 shrink-0"], name: icon);
-            view.Column(["gap-0"], content: view =>
+            view.Box(["w-10 h-10 rounded-lg bg-neutral-50 flex items-center justify-center shrink-0"],
+                content: v => v.Icon([color, "w-5 h-5"], name: icon));
+            view.Column(["gap-1"], content: view =>
             {
-                view.Text(["text-xl font-bold font-heading " + color], value);
-                view.Text(["text-xs text-muted-foreground"], label);
+                view.Text(["text-2xl font-bold font-heading " + color], value);
+                view.Text(["text-xs text-neutral-600"], label);
             });
         });
     }

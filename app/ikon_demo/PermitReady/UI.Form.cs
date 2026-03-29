@@ -63,14 +63,14 @@ public partial class IkonDemoApp
     {
         view.ScrollArea(rootStyle: ["h-full"], content: view =>
         {
-            view.Column([Container.Xl2, "py-8 px-4 gap-0 min-h-full"], content: view =>
+            view.Column([Container.Xl2, "py-10 px-4 gap-0 min-h-full"], content: view =>
             {
-                // Page header
-                view.Column(["gap-1 mb-4"], content: view =>
+                // Page header — minimalist and clear
+                view.Column(["gap-2 mb-8"], content: view =>
                 {
-                    view.Text([Text.H2], "Residence Permit Application");
-                    view.Text(["text-sm text-muted-foreground"],
-                        "Complete all sections carefully. Information must match your official documents exactly.");
+                    view.Text([Text.H1, "text-3xl font-bold"], "Residence Permit Application");
+                    view.Text(["text-base text-neutral-600"],
+                        "Complete all sections. Information must match your official documents exactly.");
                 });
 
                 // ── Completeness checker ──────────────────────────────────
@@ -756,26 +756,29 @@ public partial class IkonDemoApp
 
     private static void FormSection(UIView view, string num, string title, string subtitle, string icon, Action<UIView> content)
     {
-        view.Column([Card.Default, "p-6 gap-5 mb-4"], content: view =>
+        view.Column([Card.Default, "p-7 gap-6 mb-5 border-neutral-200"], content: view =>
         {
-            view.Row(["items-start gap-3"], content: view =>
+            view.Row(["items-start gap-4 pb-4"], content: view =>
             {
-                view.Box(["w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5"], content: view =>
+                view.Box(["w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0"], content: view =>
                     view.Text(["text-primary text-xs font-bold"], num));
-                view.Column(["gap-0.5 flex-1"], content: view =>
+                view.Column(["gap-1.5 flex-1"], content: view =>
                 {
-                    view.Row(["items-center gap-2"], content: view =>
+                    view.Row(["items-center gap-2.5"], content: view =>
                     {
-                        view.Icon(["text-muted-foreground w-4 h-4"], name: icon);
-                        view.Text(["font-semibold text-base"], title);
+                        view.Icon(["text-primary w-5 h-5 shrink-0"], name: icon);
+                        view.Text(["font-semibold text-base text-foreground"], title);
                     });
-                    view.Text(["text-xs text-muted-foreground"], subtitle);
+                    view.Text(["text-sm text-neutral-600"], subtitle);
                 });
             });
 
-            view.Separator(["my-1"]);
+            view.Separator(["mb-0 border-neutral-200"]);
 
-            content(view);
+            view.Column(["gap-5"], content: view =>
+            {
+                content(view);
+            });
         });
     }
 
@@ -786,12 +789,11 @@ public partial class IkonDemoApp
         bool active = _permitGroup.Value == group;
         view.Button(
             active
-                ? [Card.Default, "flex-1 min-w-[160px] p-4 border-2 border-primary bg-primary/5 text-left cursor-pointer flex flex-col gap-1.5"]
-                : [Card.Default, "flex-1 min-w-[160px] p-4 text-left cursor-pointer flex flex-col gap-1.5 hover:border-primary/50"],
+                ? [Card.Default, "flex-1 min-w-[170px] p-5 border-2 border-primary bg-primary/5 text-left cursor-pointer flex flex-col gap-2.5"]
+                : [Card.Default, "flex-1 min-w-[170px] p-5 border border-neutral-200 text-left cursor-pointer flex flex-col gap-2.5 hover:border-primary transition"],
             onClick: async () =>
             {
                 _permitGroup.Value = group;
-                // Set default category for the group
                 _permitCategory.Value = group switch
                 {
                     "Work"   => PermitReady.PermitCategory.EmployeePermit.ToString(),
@@ -802,19 +804,17 @@ public partial class IkonDemoApp
             },
             content: view =>
             {
-                view.Row(["items-center gap-2.5"], content: view =>
+                view.Row(["items-center gap-3"], content: view =>
                 {
-                    view.Box([$"{(active ? "bg-primary" : "bg-muted")} w-9 h-9 rounded-lg flex items-center justify-center shrink-0"], content: view =>
-                        view.Icon([$"{(active ? "text-primary-foreground" : "text-muted-foreground")} w-4 h-4"], name: icon));
-                    view.Column(["gap-0"], content: view =>
+                    view.Box([$"{(active ? "bg-primary" : "bg-neutral-100")} w-10 h-10 rounded-lg flex items-center justify-center shrink-0"], content: view =>
+                        view.Icon([$"{(active ? "text-primary-foreground" : "text-primary")} w-5 h-5"], name: icon));
+                    view.Column(["gap-0.5"], content: view =>
                     {
-                        view.Text(["font-semibold text-sm"], group);
-                        view.Text(["text-xs text-muted-foreground"], subtitle);
+                        view.Text(["font-semibold text-sm text-foreground"], group);
+                        view.Text(["text-xs text-neutral-600"], subtitle);
                     });
                 });
-                view.Text(["text-xs text-muted-foreground"], desc);
-                if (active)
-                    view.Box([Badge.DefaultSm, "w-fit"], content: v => v.Text([], "Selected"));
+                view.Text(["text-xs text-neutral-700"], desc);
             });
     }
 

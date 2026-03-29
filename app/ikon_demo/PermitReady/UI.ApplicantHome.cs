@@ -45,67 +45,74 @@ public partial class IkonDemoApp
             view.Column(["min-h-full"], content: view =>
             {
                 // ── Hero ─────────────────────────────────────────────────
-                view.Column(["px-12 py-14 gap-8 bg-[#002F6C]"], content: view =>
+                view.Column(["px-12 py-16 gap-9 bg-gradient-to-br from-[#1F3A5F] to-[#2F5A8E]"], content: view =>
                 {
-                    // Finnish flag + authority label
-                    view.Row(["items-center gap-3"], content: view =>
+                    // Authority header — minimal and clean
+                    view.Row(["items-center gap-2.5"], content: view =>
                     {
-                        view.Column(["gap-0 w-9 rounded overflow-hidden border border-white/20 shrink-0"], content: view =>
+                        view.Column(["gap-0 w-8 rounded-sm overflow-hidden border border-white/15 shrink-0"], content: view =>
                         {
-                            view.Box(["h-3 bg-white"]);
-                            view.Box(["h-3.5 bg-[#003F88]"]);
-                            view.Box(["h-3 bg-white"]);
+                            view.Box(["h-2 bg-white"]);
+                            view.Box(["h-2.5 bg-[#003F88]"]);
+                            view.Box(["h-2 bg-white"]);
                         });
-                        view.Column(["gap-0"], content: view =>
+                        view.Text(["text-xs text-white/70 font-medium tracking-wide"],
+                            "Finnish Immigration Service");
+                    });
+
+                    // Main heading — clear and direct
+                    view.Column(["gap-4 max-w-3xl"], content: view =>
+                    {
+                        view.Text(["text-6xl font-bold font-heading leading-[1.1] text-white tracking-tight"],
+                            "Apply for Your\nResidence Permit");
+                        view.Text(["text-lg text-white/80 leading-relaxed max-w-2xl font-light"],
+                            "Complete your application with confidence. PermitReady checks for missing documents and common mistakes before you submit.");
+                    });
+
+                    // Quick facts — subtle, informative
+                    view.Row(["gap-8 flex-wrap"], content: view =>
+                    {
+                        view.Column(["gap-1"], content: view =>
                         {
-                            view.Text(["text-[10px] text-blue-200 font-bold tracking-[0.2em] uppercase"],
-                                "Finnish Immigration Service");
-                            view.Text(["text-[10px] text-blue-300/80 tracking-widest"],
-                                "Maahanmuuttovirasto · Migri");
+                            view.Text(["text-3xl font-bold text-white"], "6–8 weeks");
+                            view.Text(["text-sm text-white/70"], "typical decision time");
+                        });
+                        view.Column(["gap-1"], content: view =>
+                        {
+                            view.Text(["text-3xl font-bold text-white"], "32,000+");
+                            view.Text(["text-sm text-white/70"], "permits issued annually");
+                        });
+                        view.Column(["gap-1"], content: view =>
+                        {
+                            view.Text(["text-3xl font-bold text-white"], "100%");
+                            view.Text(["text-sm text-white/70"], "online processing");
                         });
                     });
 
-                    // Campaign tagline
-                    view.Column(["gap-3 max-w-2xl"], content: view =>
-                    {
-                        view.Text(["text-5xl font-bold font-heading leading-[1.05] text-white tracking-tight"],
-                            "Smart Immigration.\nFinnish Standards.");
-                        view.Text(["text-lg text-blue-200/90 leading-relaxed max-w-xl"],
-                            "Finland's immigration system is built on clarity, speed, and fairness. Prepare a complete application the first time — and move forward faster.");
-                    });
-
-                    // Stats row
-                    view.Row(["gap-6 flex-wrap"], content: view =>
-                    {
-                        HeroStat(view, "6–8 weeks", "typical decision time");
-                        HeroStat(view, "32,000+",   "permits issued annually");
-                        HeroStat(view, "100%",       "online applications processed");
-                    });
-
-                    // Primary CTA
+                    // Primary CTA — refined and subtle
                     view.Button([
-                        "bg-white text-[#002F6C] hover:bg-blue-50 active:scale-[0.98]",
-                        "font-bold px-8 py-4 rounded-2xl text-[15px]",
-                        "flex flex-row items-center gap-3 w-fit shadow-xl transition-all"
+                        "bg-white text-[#1F3A5F] hover:bg-neutral-50 active:scale-95",
+                        "font-semibold px-7 py-3 rounded-lg text-sm",
+                        "flex flex-row items-center gap-2 w-fit transition-all shadow-lg"
                     ], content: view =>
                     {
-                        view.Text([], "Start Your Application");
-                        view.Icon(["w-5 h-5"], name: "arrow-right");
+                        view.Text([], "Start Application");
+                        view.Icon(["w-4 h-4"], name: "arrow-right");
                     }, onClick: async () => {
                         _homePanel.Value = "applying";
                     });
                 });
 
                 // ── How it works ──────────────────────────────────────────
-                view.Column(["px-12 py-10 gap-5 border-b border-border"], content: view =>
+                view.Column(["px-12 py-14 gap-8 border-b border-border/50"], content: view =>
                 {
-                    view.Row(["items-center gap-2.5 mb-1"], content: view =>
+                    view.Column(["gap-2"], content: view =>
                     {
-                        view.Box(["w-1 h-5 bg-primary rounded-full shrink-0"]);
-                        view.Text(["font-semibold text-base"], "How the process works");
+                        view.Text(["text-2xl font-bold font-heading"], "How the process works");
+                        view.Text(["text-neutral-600"], "Your application journey from submission to decision");
                     });
 
-                    view.Row(["gap-4 flex-wrap"], content: view =>
+                    view.Row(["gap-5 flex-wrap"], content: view =>
                     {
                         ProcessCard(view, "1", "apply-online",  "Apply Online",
                             "Fill all sections in EnterFinland, upload supporting documents, and pay the processing fee.", "file-text");
@@ -119,12 +126,12 @@ public partial class IkonDemoApp
                 });
 
                 // ── Permit requirements ───────────────────────────────────
-                view.Column(["px-12 py-10 gap-5 border-b border-border"], content: view =>
+                view.Column(["px-12 py-14 gap-8 border-b border-border/50"], content: view =>
                 {
-                    view.Row(["items-center gap-2.5 mb-1"], content: view =>
+                    view.Column(["gap-2"], content: view =>
                     {
-                        view.Box(["w-1 h-5 bg-primary rounded-full shrink-0"]);
-                        view.Text(["font-semibold text-base"], "Key requirements by permit type");
+                        view.Text(["text-2xl font-bold font-heading"], "What you'll need");
+                        view.Text(["text-neutral-600"], "Essential documents and requirements by permit type");
                     });
 
                     view.Row(["gap-4 flex-wrap"], content: view =>
@@ -171,15 +178,15 @@ public partial class IkonDemoApp
                 });
 
                 // ── Common pitfalls ───────────────────────────────────────
-                view.Column(["px-12 py-10 gap-5"], content: view =>
+                view.Column(["px-12 py-14 gap-8"], content: view =>
                 {
-                    view.Row(["items-center gap-2.5 mb-1"], content: view =>
+                    view.Column(["gap-2"], content: view =>
                     {
-                        view.Box(["w-1 h-5 bg-warning-primary rounded-full shrink-0"]);
-                        view.Text(["font-semibold text-base"], "Common reasons applications are delayed");
+                        view.Text(["text-2xl font-bold font-heading"], "Avoid delays");
+                        view.Text(["text-neutral-600"], "Common reasons applications need supplementary requests");
                     });
 
-                    view.Row(["gap-3 flex-wrap"], content: view =>
+                    view.Row(["gap-4 flex-wrap"], content: view =>
                     {
                         PitfallCard(view, "alert-triangle", "Expiring passport",
                             "Must be valid for the full permit period plus at least 6 months");
@@ -191,15 +198,15 @@ public partial class IkonDemoApp
                             "Names, dates, and amounts must match exactly across all documents");
                     });
 
-                    // Bottom CTA
-                    view.Row([Card.Default, "px-6 py-5 items-center justify-between gap-4 bg-primary/5 border-primary/20 flex-wrap mt-4"],
+                    // Bottom CTA — refined and integrated
+                    view.Box([Card.Default, "px-7 py-6 items-center justify-between gap-6 bg-gradient-to-r from-primary/8 to-primary/4 border-primary/20 flex-wrap mt-6"],
                         content: view =>
                     {
-                        view.Column(["gap-1"], content: view =>
+                        view.Column(["gap-1.5"], content: view =>
                         {
-                            view.Text(["font-semibold"], "Ready to check your application?");
-                            view.Text(["text-sm text-muted-foreground"],
-                                "Takes about 10 minutes. Your progress is saved automatically.");
+                            view.Text(["font-semibold text-base"], "Ready to begin?");
+                            view.Text(["text-sm text-neutral-600"],
+                                "Complete application with AI assistance takes about 10 minutes.");
                         });
                         view.Button([Button.PrimaryMd, "shrink-0 gap-2"],
                             content: v =>
@@ -705,16 +712,19 @@ public partial class IkonDemoApp
 
     private static void ProcessCard(UIView view, string num, string key, string title, string desc, string icon)
     {
-        view.Column([Card.Default, "p-4 flex-1 min-w-[200px] gap-2.5"], content: view =>
+        view.Column([Card.Default, "p-5 flex-1 min-w-[220px] gap-3.5 border-neutral-200"], content: view =>
         {
-            view.Row(["items-center gap-2.5"], content: view =>
+            view.Row(["items-start gap-3"], content: view =>
             {
-                view.Box(["w-7 h-7 rounded-full bg-primary flex items-center justify-center shrink-0"],
-                    content: v => v.Text(["text-primary-foreground text-[11px] font-bold"], num));
-                view.Icon(["text-muted-foreground w-4 h-4"], name: icon);
+                view.Box(["w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 flex-col"],
+                    content: v => v.Text(["text-primary text-[12px] font-bold"], num));
+                view.Icon(["text-primary w-5 h-5 shrink-0"], name: icon);
             });
-            view.Text(["font-semibold text-sm"], title);
-            view.Text(["text-xs text-muted-foreground leading-relaxed"], desc);
+            view.Column(["gap-1.5"], content: view =>
+            {
+                view.Text(["font-semibold text-sm text-foreground"], title);
+                view.Text(["text-xs text-neutral-600 leading-relaxed"], desc);
+            });
         });
     }
 
@@ -722,48 +732,55 @@ public partial class IkonDemoApp
         string icon, string iconBg, string iconColor,
         string title, string fee, string[] requirements, string tip)
     {
-        view.Column([Card.Default, "p-5 flex-1 min-w-[240px] gap-3"], content: view =>
+        view.Column([Card.Default, "p-6 flex-1 min-w-[250px] gap-5 border-neutral-200"], content: view =>
         {
-            view.Row(["items-center gap-2.5 justify-between"], content: view =>
+            view.Row(["items-start gap-3 justify-between"], content: view =>
             {
-                view.Row(["items-center gap-2"], content: view =>
+                view.Row(["items-center gap-3"], content: view =>
                 {
-                    view.Box([$"w-8 h-8 {iconBg} rounded-lg flex items-center justify-center shrink-0"],
-                        content: v => v.Icon([$"{iconColor} w-4 h-4"], name: icon));
-                    view.Text(["font-semibold text-sm"], title);
+                    view.Box([$"w-10 h-10 {iconBg} rounded-lg flex items-center justify-center shrink-0"],
+                        content: v => v.Icon([$"{iconColor} w-5 h-5"], name: icon));
+                    view.Column(["gap-0"], content: view =>
+                    {
+                        view.Text(["font-semibold text-sm text-foreground"], title);
+                        view.Text(["text-xs text-neutral-600"], fee);
+                    });
                 });
-                view.Box([Badge.DefaultSm, "text-[10px] shrink-0"],
-                    content: v => v.Text([], fee));
             });
-            view.Column(["gap-1.5"], content: view =>
+            view.Column(["gap-2"], content: view =>
             {
                 foreach (var req in requirements)
                     RequirementItem(view, req);
             });
-            view.Box([Alert.Info, "px-3 py-2 rounded-lg border text-xs mt-1"],
-                content: v => v.Text([], tip));
+            view.Box(["px-4 py-3 rounded-lg border border-neutral-200 bg-neutral-50"],
+                content: v => v.Row(["items-start gap-2"], content: view =>
+                {
+                    v.Icon(["w-4 h-4 text-neutral-600 shrink-0 mt-0.5"], name: "lightbulb");
+                    v.Text(["text-xs text-neutral-700 leading-relaxed"], tip);
+                }));
         });
     }
 
     private static void PitfallCard(UIView view, string icon, string title, string desc)
     {
-        view.Column([Card.Default, "p-4 flex-1 min-w-[190px] gap-1.5"], content: view =>
+        view.Column([Card.Default, "p-5 flex-1 min-w-[200px] gap-2.5 border-amber-200/50 bg-amber-50/30"], content: view =>
         {
-            view.Row(["items-center gap-2"], content: view =>
+            view.Row(["items-center gap-2.5"], content: view =>
             {
-                view.Icon(["text-warning-primary w-4 h-4 shrink-0"], name: icon);
-                view.Text(["font-semibold text-sm"], title);
+                view.Box(["w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center shrink-0"],
+                    content: v => v.Icon(["text-amber-700 w-4 h-4"], name: icon));
+                view.Text(["font-semibold text-sm text-foreground"], title);
             });
-            view.Text(["text-xs text-muted-foreground leading-relaxed"], desc);
+            view.Text(["text-xs text-neutral-600 leading-relaxed"], desc);
         });
     }
 
     private static void RequirementItem(UIView view, string text)
     {
-        view.Row(["items-start gap-2"], content: view =>
+        view.Row(["items-start gap-2.5"], content: view =>
         {
-            view.Icon(["text-success-primary w-3.5 h-3.5 mt-0.5 shrink-0"], name: "check");
-            view.Text(["text-xs leading-relaxed"], text);
+            view.Icon(["text-emerald-600 w-4 h-4 mt-0.5 shrink-0"], name: "check-circle");
+            view.Text(["text-xs leading-relaxed text-neutral-700"], text);
         });
     }
 
