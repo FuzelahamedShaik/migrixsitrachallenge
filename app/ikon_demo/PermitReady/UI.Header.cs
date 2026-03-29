@@ -58,29 +58,40 @@ public partial class IkonDemoApp
                         });
                     }
 
-                    // Officer login (visible on landing page only)
-                    if (_page.Value == "landing" && string.IsNullOrEmpty(_role.Value))
+                    // Officer controls (visible on landing page only)
+                    if (_page.Value == "landing")
                     {
-                        view.Row(["gap-2 items-center"], content: view =>
+                        if (string.IsNullOrEmpty(_role.Value))
                         {
-                            view.Text(["text-xs text-neutral-500"], "If officer:");
-                            view.TextField([Input.Default, "w-24 h-8 text-xs tracking-[0.2em] font-mono"],
-                                placeholder: "PIN",
-                                value: _officerPin.Value,
-                                onValueChange: async v =>
-                                {
-                                    _officerPin.Value = v;
-                                    _pinError.Value   = "";
-                                });
+                            // Show login form if not logged in
+                            view.Row(["gap-2 items-center"], content: view =>
+                            {
+                                view.Text(["text-xs text-neutral-500"], "If officer:");
+                                view.TextField([Input.Default, "w-24 h-8 text-xs tracking-[0.2em] font-mono"],
+                                    placeholder: "PIN",
+                                    value: _officerPin.Value,
+                                    onValueChange: async v =>
+                                    {
+                                        _officerPin.Value = v;
+                                        _pinError.Value   = "";
+                                    });
 
-                            view.Button([Button.GhostMd, "px-3 h-8 text-xs"],
-                                "Login",
-                                onClick: async () => VerifyOfficerPin());
+                                view.Button([Button.GhostMd, "px-3 h-8 text-xs"],
+                                    "Login",
+                                    onClick: async () => VerifyOfficerPin());
 
-                            if (!string.IsNullOrEmpty(_pinError.Value))
-                                view.Box(["absolute right-6 top-20 bg-red-50 border border-red-200 rounded-md px-3 py-2"], content: view =>
-                                    view.Text(["text-xs text-rose-600"], _pinError.Value));
-                        });
+                                if (!string.IsNullOrEmpty(_pinError.Value))
+                                    view.Box(["absolute right-6 top-20 bg-red-50 border border-red-200 rounded-md px-3 py-2"], content: view =>
+                                        view.Text(["text-xs text-rose-600"], _pinError.Value));
+                            });
+                        }
+                        else if (_role.Value == "officer")
+                        {
+                            // Show dashboard link if logged in as officer
+                            view.Button([Button.PrimarySm, "px-4 h-8 text-xs"],
+                                "Go to Dashboard",
+                                onClick: async () => Navigate("dashboard"));
+                        }
                     }
 
                     // Role badge
