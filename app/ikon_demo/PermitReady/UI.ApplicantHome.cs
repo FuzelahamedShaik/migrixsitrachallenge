@@ -64,9 +64,9 @@ public partial class IkonDemoApp
                     view.Column(["gap-4 max-w-3xl"], content: view =>
                     {
                         view.Text(["text-6xl font-bold font-heading leading-[1.1] text-white tracking-tight"],
-                            "Apply for Your\nResidence Permit");
+                            "Smart Immigration.\nFinnish Standards.");
                         view.Text(["text-lg text-white/80 leading-relaxed max-w-2xl font-light"],
-                            "Complete your application with confidence. PermitReady checks for missing documents and common mistakes before you submit.");
+                            "AI-powered application assistance integrated into Migri's official system. Real-time document verification and application scoring.");
                     });
 
                     // Quick facts — subtle, informative
@@ -117,7 +117,7 @@ public partial class IkonDemoApp
                         ProcessCard(view, "1", "apply-online",  "Apply Online",
                             "Fill all sections in EnterFinland, upload supporting documents, and pay the processing fee.", "file-text");
                         ProcessCard(view, "2", "ai-check",      "AI Pre-Check",
-                            "PermitReady scores your application for completeness and flags issues before it reaches an officer.", "cpu");
+                            "Automated verification scores your application completeness and flags issues before an officer reviews it.", "cpu");
                         ProcessCard(view, "3", "officer-review","Officer Review",
                             "A Migri case officer reviews your file. Complete applications are fast-tracked automatically.", "shield");
                         ProcessCard(view, "4", "decision",      "Decision",
@@ -204,9 +204,9 @@ public partial class IkonDemoApp
                     {
                         view.Column(["gap-1.5"], content: view =>
                         {
-                            view.Text(["font-semibold text-base"], "Ready to begin?");
+                            view.Text(["font-semibold text-base"], "Ready to apply?");
                             view.Text(["text-sm text-neutral-600"],
-                                "Complete application with AI assistance takes about 10 minutes.");
+                                "Complete your application with AI-powered verification. Typically 10 minutes.");
                         });
                         view.Button([Button.PrimaryMd, "shrink-0 gap-2"],
                             content: v =>
