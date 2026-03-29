@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:enterfinland.fi)",
+      "WebSearch",
+      "WebFetch(domain:migri.fi)",
+      "WebFetch(domain:www.expat-finland.com)",
+      "Bash(dotnet build:*)",
+      "Bash(grep -r \"view\\\\..*content: view =>\" app/ikon_demo/PermitReady/*.cs)"
+    ]
+  }
+}
