@@ -227,6 +227,8 @@ public partial class IkonDemoApp
                 // ── Section 4: Study / Work / Family Details ──────────────────────
                 if (_permitGroup.Value == "Study")
                 {
+                    var isExchange = _permitCategory.Value == PermitReady.PermitCategory.ExchangeStudent.ToString();
+
                     FormSection(view, "4", "Study Details", "Information about your studies in Finland", "graduation-cap", view =>
                     {
                         view.Row(["gap-4 flex-wrap"], content: view =>
@@ -247,6 +249,19 @@ public partial class IkonDemoApp
                                     onValueChange: async v => { _programName.Value = v; });
                             });
                         });
+
+                        // Exchange program details
+                        if (isExchange)
+                        {
+                            view.Column([FormField.Root], content: view =>
+                            {
+                                view.Text([FormField.LabelRequired], "Exchange Programme Organization");
+                                view.TextField([Input.Default], placeholder: "e.g. Erasmus+, AFS, YFU",
+                                    value: _exchangeOrganization.Value,
+                                    onValueChange: async v => { _exchangeOrganization.Value = v; });
+                                view.Text([FormField.HelpText], "Name of the exchange program (e.g., Erasmus+)");
+                            });
+                        }
 
                         view.Row(["gap-4 flex-wrap"], content: view =>
                         {
@@ -323,124 +338,354 @@ public partial class IkonDemoApp
                 }
                 else if (_permitGroup.Value == "Work")
                 {
-                    FormSection(view, "4", "Employment Details", "Information about your job in Finland", "briefcase", view =>
+                    // Parse the permit category to determine which type of work permit
+                    var isEmployee = _permitCategory.Value == PermitReady.PermitCategory.EmployeePermit.ToString();
+                    var isEntrepreneur = _permitCategory.Value == PermitReady.PermitCategory.SelfEmployed.ToString() ||
+                                        _permitCategory.Value == PermitReady.PermitCategory.StartupEntrepreneur.ToString();
+                    var isSpecialist = _permitCategory.Value == PermitReady.PermitCategory.SpecialistExpert.ToString();
+                    var isResearcher = _permitCategory.Value == PermitReady.PermitCategory.Researcher.ToString();
+
+                    // ── Section 4a: Employment Details (for employees) ──────
+                    if (isEmployee)
                     {
-                        view.Row(["gap-4 flex-wrap"], content: view =>
+                        FormSection(view, "4", "Employment Details", "Information about your job in Finland", "briefcase", view =>
                         {
-                            view.Column([FormField.Root, "flex-1 min-w-[200px]"], content: view =>
+                            view.Row(["gap-4 flex-wrap"], content: view =>
                             {
-                                view.Text([FormField.LabelRequired], "Employer Name");
-                                view.TextField([Input.Default], placeholder: "Legal company name, e.g. Nokia Oyj",
-                                    value: _employerName.Value,
-                                    onValueChange: async v => { _employerName.Value = v; });
-                                view.Text([FormField.HelpText], "Use the exact registered company name");
+                                view.Column([FormField.Root, "flex-1 min-w-[200px]"], content: view =>
+                                {
+                                    view.Text([FormField.LabelRequired], "Employer Name");
+                                    view.TextField([Input.Default], placeholder: "Legal company name, e.g. Nokia Oyj",
+                                        value: _employerName.Value,
+                                        onValueChange: async v => { _employerName.Value = v; });
+                                    view.Text([FormField.HelpText], "Use the exact registered company name");
+                                });
+
+                                view.Column([FormField.Root, "flex-1 min-w-[200px]"], content: view =>
+                                {
+                                    view.Text([FormField.LabelRequired], "Job Title");
+                                    view.TextField([Input.Default], placeholder: "As stated in your contract",
+                                        value: _jobTitle.Value,
+                                        onValueChange: async v => { _jobTitle.Value = v; });
+                                });
                             });
 
-                            view.Column([FormField.Root, "flex-1 min-w-[200px]"], content: view =>
+                            view.Row(["gap-4 flex-wrap"], content: view =>
                             {
-                                view.Text([FormField.LabelRequired], "Job Title");
-                                view.TextField([Input.Default], placeholder: "As stated in your contract",
-                                    value: _jobTitle.Value,
-                                    onValueChange: async v => { _jobTitle.Value = v; });
+                                view.Column([FormField.Root, "flex-1 min-w-[180px]"], content: view =>
+                                {
+                                    view.Text([FormField.LabelRequired], "Monthly Gross Salary (€)");
+                                    view.TextField([Input.Default], placeholder: "e.g. 3500",
+                                        value: _salaryAmount.Value,
+                                        onValueChange: async v => { _salaryAmount.Value = v; });
+                                    view.Text([FormField.HelpText], "Minimum €1,500/month gross");
+                                    if (decimal.TryParse(_salaryAmount.Value, out var s) && s > 0 && s < 1500)
+                                        view.Text([FormField.ErrorText], $"€{s:N0}/month is below the minimum of €1,500/month");
+                                });
+
+                                view.Column([FormField.Root, "flex-1 min-w-[180px]"], content: view =>
+                                {
+                                    view.Text([FormField.Label], "Contract Reference No.");
+                                    view.TextField([Input.Default, "font-mono"], placeholder: "e.g. NOK-2024-789",
+                                        value: _contractRef.Value,
+                                        onValueChange: async v => { _contractRef.Value = v; });
+                                });
+
+                                view.Column([FormField.Root, "flex-1 min-w-[180px]"], content: view =>
+                                {
+                                    view.Text([FormField.Label], "Employment Start Date");
+                                    view.TextField([Input.Default], placeholder: "YYYY-MM-DD",
+                                        value: _workStartDate.Value,
+                                        onValueChange: async v => { _workStartDate.Value = v; });
+                                });
                             });
                         });
+                    }
 
-                        view.Row(["gap-4 flex-wrap"], content: view =>
+                    // ── Section 4b: Business Details (for entrepreneurs) ────
+                    else if (isEntrepreneur)
+                    {
+                        FormSection(view, "4", "Business Details", "Information about your business in Finland", "briefcase", view =>
                         {
-                            view.Column([FormField.Root, "flex-1 min-w-[180px]"], content: view =>
+                            view.Row(["gap-4 flex-wrap"], content: view =>
                             {
-                                view.Text([FormField.LabelRequired], "Monthly Gross Salary (€)");
-                                view.TextField([Input.Default], placeholder: "e.g. 3500",
-                                    value: _salaryAmount.Value,
-                                    onValueChange: async v => { _salaryAmount.Value = v; });
-                                view.Text([FormField.HelpText], "Minimum €1,500/month gross");
-                                if (decimal.TryParse(_salaryAmount.Value, out var s) && s > 0 && s < 1500)
-                                    view.Text([FormField.ErrorText], $"€{s:N0}/month is below the minimum of €1,500/month");
+                                view.Column([FormField.Root, "flex-1 min-w-[200px]"], content: view =>
+                                {
+                                    view.Text([FormField.LabelRequired], "Business Name");
+                                    view.TextField([Input.Default], placeholder: "e.g. TechStart Oy",
+                                        value: _businessName.Value,
+                                        onValueChange: async v => { _businessName.Value = v; });
+                                    view.Text([FormField.HelpText], "Legal business name as registered");
+                                });
+
+                                view.Column([FormField.Root, "flex-1 min-w-[200px]"], content: view =>
+                                {
+                                    view.Text([FormField.Label], "Business Registration Number");
+                                    view.TextField([Input.Default, "font-mono"], placeholder: "e.g. FI12345678",
+                                        value: _businessRegistration.Value,
+                                        onValueChange: async v => { _businessRegistration.Value = v; });
+                                    view.Text([FormField.HelpText], "From Finnish Trade Register");
+                                });
                             });
 
-                            view.Column([FormField.Root, "flex-1 min-w-[180px]"], content: view =>
+                            view.Row(["gap-4 flex-wrap"], content: view =>
                             {
-                                view.Text([FormField.Label], "Contract Reference No.");
-                                view.TextField([Input.Default, "font-mono"], placeholder: "e.g. NOK-2024-789",
-                                    value: _contractRef.Value,
-                                    onValueChange: async v => { _contractRef.Value = v; });
-                            });
+                                view.Column([FormField.Root, "flex-1 min-w-[200px]"], content: view =>
+                                {
+                                    view.Text([FormField.LabelRequired], "Business Field");
+                                    view.TextField([Input.Default], placeholder: "e.g. Software Development",
+                                        value: _businessField.Value,
+                                        onValueChange: async v => { _businessField.Value = v; });
+                                });
 
-                            view.Column([FormField.Root, "flex-1 min-w-[180px]"], content: view =>
-                            {
-                                view.Text([FormField.Label], "Employment Start Date");
-                                view.TextField([Input.Default], placeholder: "YYYY-MM-DD",
-                                    value: _workStartDate.Value,
-                                    onValueChange: async v => { _workStartDate.Value = v; });
+                                view.Column([FormField.Root, "flex-1 min-w-[180px]"], content: view =>
+                                {
+                                    view.Text([FormField.LabelRequired], "Available Business Funds (€)");
+                                    view.TextField([Input.Default], placeholder: "e.g. 15000",
+                                        value: _businessFunds.Value,
+                                        onValueChange: async v => { _businessFunds.Value = v; });
+                                    view.Text([FormField.HelpText], "Minimum €15,000 for startups");
+                                });
                             });
                         });
-                    });
+                    }
+
+                    // ── Section 4c: Specialist Details ────────────────────
+                    else if (isSpecialist)
+                    {
+                        FormSection(view, "4", "Specialist Qualifications", "Information about your expertise and qualifications", "briefcase", view =>
+                        {
+                            view.Row(["gap-4 flex-wrap"], content: view =>
+                            {
+                                view.Column([FormField.Root, "flex-1 min-w-[200px]"], content: view =>
+                                {
+                                    view.Text([FormField.LabelRequired], "Field of Expertise");
+                                    view.TextField([Input.Default], placeholder: "e.g. Software Engineering, Healthcare",
+                                        value: _fieldOfExpertise.Value,
+                                        onValueChange: async v => { _fieldOfExpertise.Value = v; });
+                                });
+
+                                view.Column([FormField.Root, "flex-1 min-w-[180px]"], content: view =>
+                                {
+                                    view.Text([FormField.LabelRequired], "Years of Experience");
+                                    view.TextField([Input.Default], placeholder: "e.g. 5",
+                                        value: _yearsOfExperience.Value,
+                                        onValueChange: async v => { _yearsOfExperience.Value = v; });
+                                    view.Text([FormField.HelpText], "In your field of expertise");
+                                });
+                            });
+
+                            view.Column([FormField.Root], content: view =>
+                            {
+                                view.Text([FormField.Label], "Professional Certifications");
+                                view.TextField([Input.Default], placeholder: "e.g. AWS Certified, PMP, CISSP",
+                                    value: _certifications.Value,
+                                    onValueChange: async v => { _certifications.Value = v; });
+                                view.Text([FormField.HelpText], "List relevant professional certifications");
+                            });
+                        });
+                    }
+
+                    // ── Section 4d: Researcher Details ────────────────────
+                    else if (isResearcher)
+                    {
+                        FormSection(view, "4", "Research Details", "Information about your research position in Finland", "briefcase", view =>
+                        {
+                            view.Row(["gap-4 flex-wrap"], content: view =>
+                            {
+                                view.Column([FormField.Root, "flex-1 min-w-[200px]"], content: view =>
+                                {
+                                    view.Text([FormField.LabelRequired], "Research Institution");
+                                    view.TextField([Input.Default], placeholder: "e.g. University of Helsinki, VTT",
+                                        value: _researchInstitution.Value,
+                                        onValueChange: async v => { _researchInstitution.Value = v; });
+                                    view.Text([FormField.HelpText], "Name of the Finnish research institution");
+                                });
+
+                                view.Column([FormField.Root, "flex-1 min-w-[200px]"], content: view =>
+                                {
+                                    view.Text([FormField.LabelRequired], "Research Project");
+                                    view.TextField([Input.Default], placeholder: "e.g. Climate Change Impact Study",
+                                        value: _researchProject.Value,
+                                        onValueChange: async v => { _researchProject.Value = v; });
+                                });
+                            });
+                        });
+                    }
 
                     // ── Section 5: Work Documents ─────────────────────────
                     FormSection(view, "5", "Supporting Documents", "Upload all required documents as PDF (max 1 MB each)", "paperclip", view =>
                     {
                         view.Row(["gap-5 flex-wrap"], content: view =>
                         {
-                            DocSlot(view, "Employment Contract *", "employment-contract",
-                                "Signed contract showing role, salary, and start date",
-                                _contractDoc.Value,
-                                async args =>
-                                {
-                                    _contractDoc.Value = [.._contractDoc.Value,
-                                        new PermitReady.UploadedDoc(args.FileName, args.Size, PermitReady.DocStatus.Verifying, [], [])];
-                                    await CacheUploadedDocBytesAsync(args.FileName, args.LocalTempFilePath!);
-                                    decimal? declaredSalary = decimal.TryParse(_salaryAmount.Value, out var sv) ? sv : null;
-                                    await VerifyEmploymentContractAsync(
-                                        args.LocalTempFilePath!, args.FileName,
-                                        _employerName.Value.NullIfEmpty(),
-                                        _jobTitle.Value.NullIfEmpty(),
-                                        declaredSalary,
-                                        _contractRef.Value.NullIfEmpty());
-                                },
-                                async name => { _contractDoc.Value = _contractDoc.Value.Where(d => d.FileName != name).ToList(); });
+                            if (isEmployee || isSpecialist)
+                            {
+                                DocSlot(view, "Employment Contract *", "employment-contract",
+                                    "Signed contract showing role, salary, and start date",
+                                    _contractDoc.Value,
+                                    async args =>
+                                    {
+                                        _contractDoc.Value = [.._contractDoc.Value,
+                                            new PermitReady.UploadedDoc(args.FileName, args.Size, PermitReady.DocStatus.Verifying, [], [])];
+                                        await CacheUploadedDocBytesAsync(args.FileName, args.LocalTempFilePath!);
+                                        decimal? declaredSalary = decimal.TryParse(_salaryAmount.Value, out var sv) ? sv : null;
+                                        await VerifyEmploymentContractAsync(
+                                            args.LocalTempFilePath!, args.FileName,
+                                            _employerName.Value.NullIfEmpty(),
+                                            _jobTitle.Value.NullIfEmpty(),
+                                            declaredSalary,
+                                            _contractRef.Value.NullIfEmpty());
+                                    },
+                                    async name => { _contractDoc.Value = _contractDoc.Value.Where(d => d.FileName != name).ToList(); });
+                            }
 
-                            DocSlot(view, "Salary Proof / Payslips", "salary-proof",
-                                "Recent payslips or payroll confirmation if already employed",
-                                _salaryProofDoc.Value,
-                                async args =>
-                                {
-                                    _salaryProofDoc.Value = [.._salaryProofDoc.Value,
-                                        new PermitReady.UploadedDoc(args.FileName, args.Size, PermitReady.DocStatus.Verifying, [], [])];
-                                    await CacheUploadedDocBytesAsync(args.FileName, args.LocalTempFilePath!);
-                                    decimal? declaredSalary = decimal.TryParse(_salaryAmount.Value, out var sv) ? sv : null;
-                                    await VerifySalaryProofAsync(
-                                        args.LocalTempFilePath!, args.FileName,
-                                        _employerName.Value.NullIfEmpty(),
-                                        declaredSalary);
-                                },
-                                async name => { _salaryProofDoc.Value = _salaryProofDoc.Value.Where(d => d.FileName != name).ToList(); });
+                            if (isEmployee)
+                            {
+                                DocSlot(view, "Salary Proof / Payslips", "salary-proof",
+                                    "Recent payslips or payroll confirmation if already employed",
+                                    _salaryProofDoc.Value,
+                                    async args =>
+                                    {
+                                        _salaryProofDoc.Value = [.._salaryProofDoc.Value,
+                                            new PermitReady.UploadedDoc(args.FileName, args.Size, PermitReady.DocStatus.Verifying, [], [])];
+                                        await CacheUploadedDocBytesAsync(args.FileName, args.LocalTempFilePath!);
+                                        decimal? declaredSalary = decimal.TryParse(_salaryAmount.Value, out var sv) ? sv : null;
+                                        await VerifySalaryProofAsync(
+                                            args.LocalTempFilePath!, args.FileName,
+                                            _employerName.Value.NullIfEmpty(),
+                                            declaredSalary);
+                                    },
+                                    async name => { _salaryProofDoc.Value = _salaryProofDoc.Value.Where(d => d.FileName != name).ToList(); });
+                            }
+
+                            if (isEntrepreneur)
+                            {
+                                DocSlot(view, "Business Plan *", "business-plan",
+                                    "Detailed business plan with financial projections",
+                                    _contractDoc.Value,
+                                    async args =>
+                                    {
+                                        _contractDoc.Value = [.._contractDoc.Value,
+                                            new PermitReady.UploadedDoc(args.FileName, args.Size, PermitReady.DocStatus.Verifying, [], [])];
+                                        await CacheUploadedDocBytesAsync(args.FileName, args.LocalTempFilePath!);
+                                    },
+                                    async name => { _contractDoc.Value = _contractDoc.Value.Where(d => d.FileName != name).ToList(); });
+
+                                DocSlot(view, "Proof of Funds *", "funds-proof",
+                                    "Bank statement showing €15,000+ available",
+                                    _bankStatementDoc.Value,
+                                    async args =>
+                                    {
+                                        _bankStatementDoc.Value = [.._bankStatementDoc.Value,
+                                            new PermitReady.UploadedDoc(args.FileName, args.Size, PermitReady.DocStatus.Verifying, [], [])];
+                                        await CacheUploadedDocBytesAsync(args.FileName, args.LocalTempFilePath!);
+                                        decimal? claimed = decimal.TryParse(_businessFunds.Value, out var fv) ? fv : null;
+                                        await VerifyBankStatementAsync(args.LocalTempFilePath!, args.FileName, claimed);
+                                    },
+                                    async name => { _bankStatementDoc.Value = _bankStatementDoc.Value.Where(d => d.FileName != name).ToList(); });
+                            }
+
+                            if (isResearcher)
+                            {
+                                DocSlot(view, "Research Invitation *", "research-invitation",
+                                    "Official invitation from the research institution",
+                                    _contractDoc.Value,
+                                    async args =>
+                                    {
+                                        _contractDoc.Value = [.._contractDoc.Value,
+                                            new PermitReady.UploadedDoc(args.FileName, args.Size, PermitReady.DocStatus.Verifying, [], [])];
+                                        await CacheUploadedDocBytesAsync(args.FileName, args.LocalTempFilePath!);
+                                    },
+                                    async name => { _contractDoc.Value = _contractDoc.Value.Where(d => d.FileName != name).ToList(); });
+                            }
                         });
                     });
                 }
                 else // Family
                 {
+                    // Parse family permit type
+                    var isSpouse = _permitCategory.Value == PermitReady.PermitCategory.SpouseOfFinnish.ToString() ||
+                                   _permitCategory.Value == PermitReady.PermitCategory.SpouseOfPermitHolder.ToString() ||
+                                   _permitCategory.Value == PermitReady.PermitCategory.SpouseOfEUCitizen.ToString();
+                    var isChild = _permitCategory.Value == PermitReady.PermitCategory.ChildOfFinnish.ToString() ||
+                                  _permitCategory.Value == PermitReady.PermitCategory.ChildOfPermitHolder.ToString();
+                    var isParent = _permitCategory.Value == PermitReady.PermitCategory.ParentOfMinorFinnish.ToString() ||
+                                   _permitCategory.Value == PermitReady.PermitCategory.ParentOfMinorPermitHolder.ToString();
+
+                    // ── Section 4: Family / Sponsor Details ───────────────
                     FormSection(view, "4", "Family / Sponsor Details", "Information about your sponsor or family relationship in Finland", "heart", view =>
                     {
                         view.Row(["gap-4 flex-wrap"], content: view =>
                         {
                             view.Column([FormField.Root, "flex-1 min-w-[200px]"], content: view =>
                             {
-                                view.Text([FormField.LabelRequired], "Sponsor / Family Member Name");
-                                view.TextField([Input.Default], placeholder: "Full legal name of your sponsor",
+                                var label = isParent ? "Child's Name" : "Sponsor / Family Member Name";
+                                view.Text([FormField.LabelRequired], label);
+                                view.TextField([Input.Default], placeholder: "Full legal name",
                                     value: _sponsorName.Value,
                                     onValueChange: async v => { _sponsorName.Value = v; });
-                                view.Text([FormField.HelpText], "The person you are joining in Finland");
+                                view.Text([FormField.HelpText], isParent ? "Your child in Finland" : "The person you are joining in Finland");
                             });
 
                             view.Column([FormField.Root, "flex-1 min-w-[200px]"], content: view =>
                             {
-                                view.Text([FormField.Label], "Sponsor's Permit / ID Number");
+                                var label = isParent ? "Child's ID Number" : "Sponsor's Permit / ID Number";
+                                view.Text([FormField.Label], label);
                                 view.TextField([Input.Default, "font-mono"], placeholder: "e.g. FI-RP-2024-1234",
                                     value: _sponsorPermitNumber.Value,
                                     onValueChange: async v => { _sponsorPermitNumber.Value = v; });
-                                view.Text([FormField.HelpText], "Residence permit number or Finnish personal ID");
+                                view.Text([FormField.HelpText], isParent ? "Child's ID or permit number" : "Residence permit number or Finnish personal ID");
                             });
                         });
+
+                        // Additional fields for spouse
+                        if (isSpouse)
+                        {
+                            view.Row(["gap-4 flex-wrap"], content: view =>
+                            {
+                                view.Column([FormField.Root, "flex-1 min-w-[200px]"], content: view =>
+                                {
+                                    view.Text([FormField.Label], "Spouse's Nationality");
+                                    view.Select(
+                                        options: Countries.Select(c => new SelectOption(c, c)).ToArray(),
+                                        value: _sponsorNationality.Value,
+                                        placeholder: "Select country...",
+                                        triggerStyle: [Select.Trigger, "w-full"],
+                                        onValueChange: async v => { _sponsorNationality.Value = v ?? ""; });
+                                });
+
+                                view.Column([FormField.Root, "flex-1 min-w-[200px]"], content: view =>
+                                {
+                                    view.Text([FormField.Label], "Marriage Date");
+                                    view.TextField([Input.Default], placeholder: "YYYY-MM-DD",
+                                        value: _studyStartDate.Value,
+                                        onValueChange: async v => { _studyStartDate.Value = v; });
+                                });
+                            });
+                        }
+
+                        // Additional fields for parents
+                        if (isParent)
+                        {
+                            view.Row(["gap-4 flex-wrap"], content: view =>
+                            {
+                                view.Column([FormField.Root, "flex-1 min-w-[200px]"], content: view =>
+                                {
+                                    view.Text([FormField.Label], "Child's Date of Birth");
+                                    view.TextField([Input.Default], placeholder: "YYYY-MM-DD",
+                                        value: _workStartDate.Value,
+                                        onValueChange: async v => { _workStartDate.Value = v; });
+                                });
+
+                                view.Column([FormField.Root, "flex-1 min-w-[200px]"], content: view =>
+                                {
+                                    view.Text([FormField.Label], "Your Occupation in Finland");
+                                    view.TextField([Input.Default], placeholder: "e.g. Software Engineer, Teacher",
+                                        value: _sponsorOccupation.Value,
+                                        onValueChange: async v => { _sponsorOccupation.Value = v; });
+                                });
+                            });
+                        }
                     });
 
                     // ── Section 5: Family Documents ───────────────────────
@@ -448,8 +693,13 @@ public partial class IkonDemoApp
                     {
                         view.Row(["gap-5 flex-wrap"], content: view =>
                         {
-                            DocSlot(view, "Relationship Document *", "relationship-doc",
-                                "Marriage certificate, birth certificate, or other proof of relationship",
+                            var docTitle = isChild ? "Birth Certificate *" : isParent ? "Child's Birth Certificate *" : "Marriage Certificate *";
+                            var docDesc = isChild ? "Official birth certificate proving parent-child relationship" :
+                                          isParent ? "Birth certificate of your child in Finland" :
+                                          "Official marriage certificate or partnership registration";
+
+                            DocSlot(view, docTitle, "relationship-doc",
+                                docDesc,
                                 _acceptanceDoc.Value,
                                 async args =>
                                 {
@@ -457,14 +707,18 @@ public partial class IkonDemoApp
                                         new PermitReady.UploadedDoc(args.FileName, args.Size, PermitReady.DocStatus.Verifying, [], [])];
                                     await CacheUploadedDocBytesAsync(args.FileName, args.LocalTempFilePath!);
                                     var fn = args.FileName;
-                                    await VerifyGenericDocAsync(args.LocalTempFilePath!, fn, "marriage certificate, birth certificate, or relationship proof",
+                                    await VerifyGenericDocAsync(args.LocalTempFilePath!, fn, "family relationship proof",
                                         d => UpdateDocInList(_acceptanceDoc, fn, _ => d!),
                                         () => _acceptanceDoc.Value.FirstOrDefault(x => x.FileName == fn));
                                 },
                                 async name => { _acceptanceDoc.Value = _acceptanceDoc.Value.Where(d => d.FileName != name).ToList(); });
 
-                            DocSlot(view, "Sponsor's Permit Copy", "sponsor-permit",
-                                "Copy of sponsor's Finnish residence permit or citizenship",
+                            var sponsorDocTitle = isParent ? "Custody/Guardianship Document *" : "Sponsor's Residence Permit Copy";
+                            var sponsorDocDesc = isParent ? "Official custody or guardianship document proving you are the child's guardian" :
+                                                 "Copy of sponsor's Finnish residence permit or citizenship";
+
+                            DocSlot(view, sponsorDocTitle, "sponsor-permit",
+                                sponsorDocDesc,
                                 _contractDoc.Value,
                                 async args =>
                                 {

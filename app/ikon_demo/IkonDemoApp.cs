@@ -43,6 +43,24 @@ public partial class IkonDemoApp(IApp<SessionIdentity, ClientParameters> app)
     // Form state — family
     private readonly ClientReactive<string>  _sponsorName          = new("");
     private readonly ClientReactive<string>  _sponsorPermitNumber  = new("");
+    private readonly ClientReactive<string>  _relationshipType     = new("");  // spouse, child, parent
+    private readonly ClientReactive<string>  _sponsorNationality   = new("");
+    private readonly ClientReactive<string>  _sponsorOccupation    = new("");
+    // Form state — work (entrepreneur)
+    private readonly ClientReactive<string>  _businessName         = new("");
+    private readonly ClientReactive<string>  _businessRegistration = new("");
+    private readonly ClientReactive<string>  _businessField        = new("");
+    private readonly ClientReactive<string>  _businessFunds        = new("");
+    // Form state — work (specialist)
+    private readonly ClientReactive<string>  _fieldOfExpertise     = new("");
+    private readonly ClientReactive<string>  _yearsOfExperience    = new("");
+    private readonly ClientReactive<string>  _certifications       = new("");
+    // Form state — work (researcher)
+    private readonly ClientReactive<string>  _researchInstitution  = new("");
+    private readonly ClientReactive<string>  _researchProject      = new("");
+    // Form state — study
+    private readonly ClientReactive<string>  _exchangeOrganization = new("");
+    private readonly ClientReactive<string>  _scholarshipSource    = new("");
     // Upload slots — multiple documents supported per slot
     private readonly ClientReactive<List<PermitReady.UploadedDoc>> _passportDoc      = new([]);
     private readonly ClientReactive<List<PermitReady.UploadedDoc>> _acceptanceDoc    = new([]);

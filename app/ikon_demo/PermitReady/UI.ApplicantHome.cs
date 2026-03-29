@@ -21,15 +21,10 @@ public partial class IkonDemoApp
                         RenderBrandStrip(view);
                 });
 
-                // Center content — quiz or form (applying)
-                if (_homePanel.Value == "assessment" || _homePanel.Value == "applying")
+                // Center content — form (applying)
+                if (_homePanel.Value == "applying")
                     view.Box(["flex-1 min-w-0 h-full overflow-hidden"], content: view =>
-                    {
-                        if (_homePanel.Value == "assessment")
-                            RenderPermitQuizInline(view);
-                        else
-                            RenderForm(view);
-                    });
+                        RenderForm(view));
             });
 
             // Divider
@@ -97,10 +92,7 @@ public partial class IkonDemoApp
                         view.Text([], "Start Your Application");
                         view.Icon(["w-5 h-5"], name: "arrow-right");
                     }, onClick: async () => {
-                        _quizPhase.Value = "start";
-                        _quizCurrentQuestion.Value = 0;
-                        _quizAnswers.Value = [];
-                        _homePanel.Value = "assessment";
+                        _homePanel.Value = "applying";
                     });
                 });
 
@@ -216,10 +208,7 @@ public partial class IkonDemoApp
                                 v.Icon(["w-4 h-4"], name: "arrow-right");
                             },
                             onClick: async () => {
-                                _quizPhase.Value = "start";
-                                _quizCurrentQuestion.Value = 0;
-                                _quizAnswers.Value = [];
-                                _homePanel.Value = "assessment";
+                                _homePanel.Value = "applying";
                             });
                     });
                 });
