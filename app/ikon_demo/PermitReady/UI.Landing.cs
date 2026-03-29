@@ -79,69 +79,102 @@ public partial class IkonDemoApp
                                         Navigate("applicant_home");
                                     });
                             });
-
-                            // Officer login (subtle)
-                            view.Column(["mt-8 p-4 bg-neutral-50 rounded-lg border border-neutral-200 gap-3"], content: view =>
-                            {
-                                view.Text(["text-sm font-semibold"], "Migri Officer?");
-                                view.Text(["text-xs text-neutral-600 mb-2"],
-                                    "Access the officer dashboard to review applications.");
-
-                                view.TextField([Input.Default, "text-center tracking-[0.3em] font-mono text-sm"],
-                                    placeholder: "PIN",
-                                    value: _officerPin.Value,
-                                    onValueChange: async v =>
-                                    {
-                                        _officerPin.Value = v;
-                                        _pinError.Value   = "";
-                                    });
-
-                                if (!string.IsNullOrEmpty(_pinError.Value))
-                                    view.Text(["text-xs text-rose-600 font-semibold"], _pinError.Value);
-
-                                view.Button([Button.SecondaryMd, "w-full py-2 text-sm"], "Access Dashboard",
-                                    onClick: async () => VerifyOfficerPin());
-                            });
                         });
 
-                        // Right: YouTube Video
-                        view.Column(["flex-1 min-w-[300px] gap-3"], content: view =>
+                        // Right: Video Guides
+                        view.Column(["flex-1 min-w-[300px] gap-4"], content: view =>
                         {
-                            view.Column(["gap-2 mb-2"], content: view =>
+                            view.Column(["gap-2"], content: view =>
                             {
-                                view.Text(["text-lg font-semibold"], "How to Apply");
+                                view.Text(["text-lg font-semibold"], "Official Migri Guides");
                                 view.Text(["text-sm text-neutral-600"],
-                                    "Watch this short guide to understand the application process.");
+                                    "Learn from Finnish Immigration Service videos");
                             });
 
-                            // Video embed container
-                            view.Column(["w-full bg-neutral-900 rounded-lg overflow-hidden aspect-video flex items-center justify-center cursor-pointer hover:bg-black transition-colors group"], content: view =>
+                            // Video cards
+                            view.Column(["gap-2.5"], content: view =>
                             {
-                                view.Column(["gap-3 items-center"], content: view =>
-                                {
-                                    view.Box(["w-16 h-16 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white/30 transition-colors"], content: view =>
-                                        view.Icon(["w-8 h-8 text-white ml-1"], name: "play"));
-
-                                    view.Column(["text-center gap-1"], content: view =>
+                                // Video 1: Remember student permit requirements
+                                view.Button([Button.GhostMd, "w-full p-3 border border-neutral-200 rounded-lg text-left hover:bg-neutral-50 hover:border-blue-300 flex items-start gap-3 h-auto justify-start transition-all"],
+                                    href: "https://youtu.be/3X2cVhux4RA",
+                                    target: "_blank",
+                                    content: view =>
                                     {
-                                        view.Text(["text-white font-semibold"], "Watch Guide Video");
-                                        view.Text(["text-white/60 text-sm"], "How to Complete Your Application");
+                                        view.Box(["w-10 h-10 rounded-md bg-blue-100 flex items-center justify-center flex-shrink-0"], content: view =>
+                                            view.Icon(["text-blue-600 w-5 h-5"], name: "play"));
+
+                                        view.Column(["flex-1 gap-1 min-w-0"], content: view =>
+                                        {
+                                            view.Text(["text-sm font-semibold line-clamp-2"],
+                                                "Student Permit Requirements");
+                                            view.Text(["text-xs text-neutral-500"],
+                                                "Remember these when applying for studies");
+                                        });
                                     });
-                                });
+
+                                // Video 2: How to select the right work permit
+                                view.Button([Button.GhostMd, "w-full p-3 border border-neutral-200 rounded-lg text-left hover:bg-neutral-50 hover:border-blue-300 flex items-start gap-3 h-auto justify-start transition-all"],
+                                    href: "https://youtu.be/5rWtsCMcNaQ",
+                                    target: "_blank",
+                                    content: view =>
+                                    {
+                                        view.Box(["w-10 h-10 rounded-md bg-emerald-100 flex items-center justify-center flex-shrink-0"], content: view =>
+                                            view.Icon(["text-emerald-600 w-5 h-5"], name: "play"));
+
+                                        view.Column(["flex-1 gap-1 min-w-0"], content: view =>
+                                        {
+                                            view.Text(["text-sm font-semibold line-clamp-2"],
+                                                "Right Work Permit Type");
+                                            view.Text(["text-xs text-neutral-500"],
+                                                "How to select the right employment permit");
+                                        });
+                                    });
+
+                                // Video 3: After graduation
+                                view.Button([Button.GhostMd, "w-full p-3 border border-neutral-200 rounded-lg text-left hover:bg-neutral-50 hover:border-blue-300 flex items-start gap-3 h-auto justify-start transition-all"],
+                                    href: "https://youtu.be/Y1ciw3vmhiA",
+                                    target: "_blank",
+                                    content: view =>
+                                    {
+                                        view.Box(["w-10 h-10 rounded-md bg-amber-100 flex items-center justify-center flex-shrink-0"], content: view =>
+                                            view.Icon(["text-amber-600 w-5 h-5"], name: "play"));
+
+                                        view.Column(["flex-1 gap-1 min-w-0"], content: view =>
+                                        {
+                                            view.Text(["text-sm font-semibold line-clamp-2"],
+                                                "After Graduation");
+                                            view.Text(["text-xs text-neutral-500"],
+                                                "How to work in Finland after your studies");
+                                        });
+                                    });
+
+                                // Video 4: Fast-track entrepreneur
+                                view.Button([Button.GhostMd, "w-full p-3 border border-neutral-200 rounded-lg text-left hover:bg-neutral-50 hover:border-blue-300 flex items-start gap-3 h-auto justify-start transition-all"],
+                                    href: "https://youtu.be/PTlU4OOPeXE",
+                                    target: "_blank",
+                                    content: view =>
+                                    {
+                                        view.Box(["w-10 h-10 rounded-md bg-purple-100 flex items-center justify-center flex-shrink-0"], content: view =>
+                                            view.Icon(["text-purple-600 w-5 h-5"], name: "play"));
+
+                                        view.Column(["flex-1 gap-1 min-w-0"], content: view =>
+                                        {
+                                            view.Text(["text-sm font-semibold line-clamp-2"],
+                                                "Startup Entrepreneur");
+                                            view.Text(["text-xs text-neutral-500"],
+                                                "Fast-track startup permit application");
+                                        });
+                                    });
                             });
 
-                            // Additional info
-                            view.Column(["gap-2 mt-4 p-4 bg-amber-50 rounded-lg border border-amber-200"], content: view =>
+                            // Tip box
+                            view.Column(["gap-2 mt-2 p-3 bg-amber-50 rounded-lg border border-amber-200"], content: view =>
                             {
                                 view.Row(["gap-2 items-start"], content: view =>
                                 {
-                                    view.Icon(["w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5"], name: "lightbulb");
-                                    view.Column(["gap-1"], content: view =>
-                                    {
-                                        view.Text(["text-sm font-semibold text-amber-900"], "Pro Tip");
-                                        view.Text(["text-xs text-amber-800"],
-                                            "Prepare your documents before starting. The application takes about 10 minutes with AI assistance.");
-                                    });
+                                    view.Icon(["w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5"], name: "lightbulb");
+                                    view.Text(["text-xs text-amber-800"],
+                                        "All videos from the official Finnish Immigration Service (Maahanmuuttovirasto)");
                                 });
                             });
                         });

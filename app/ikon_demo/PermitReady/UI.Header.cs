@@ -21,7 +21,7 @@ public partial class IkonDemoApp
                         view.Text(["text-sm font-bold tracking-tight font-heading"], "PermitReady");
                     });
 
-                // Right: breadcrumbs + role badge + theme toggle
+                // Right: breadcrumbs + role badge + theme toggle + officer login
                 view.Row(["items-center gap-4"], content: view =>
                 {
                     // Breadcrumb trail (inline, right-aligned)
@@ -55,6 +55,31 @@ public partial class IkonDemoApp
                                         view.Text([Breadcrumb.Separator, "text-sm select-none"], "/");
                                 }
                             });
+                        });
+                    }
+
+                    // Officer login (visible on landing page only)
+                    if (_page.Value == "landing" && string.IsNullOrEmpty(_role.Value))
+                    {
+                        view.Row(["gap-2 items-center"], content: view =>
+                        {
+                            view.Text(["text-xs text-neutral-500"], "If officer:");
+                            view.TextField([Input.Default, "w-24 h-8 text-xs tracking-[0.2em] font-mono"],
+                                placeholder: "PIN",
+                                value: _officerPin.Value,
+                                onValueChange: async v =>
+                                {
+                                    _officerPin.Value = v;
+                                    _pinError.Value   = "";
+                                });
+
+                            view.Button([Button.GhostMd, "px-3 h-8 text-xs"],
+                                "Login",
+                                onClick: async () => VerifyOfficerPin());
+
+                            if (!string.IsNullOrEmpty(_pinError.Value))
+                                view.Box(["absolute right-6 top-20 bg-red-50 border border-red-200 rounded-md px-3 py-2"], content: view =>
+                                    view.Text(["text-xs text-rose-600"], _pinError.Value));
                         });
                     }
 
