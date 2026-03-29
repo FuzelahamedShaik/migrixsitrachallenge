@@ -61,9 +61,9 @@ public partial class IkonDemoApp
                     // Officer controls (visible on landing page only)
                     if (_page.Value == "landing")
                     {
-                        if (string.IsNullOrEmpty(_role.Value))
+                        if (string.IsNullOrEmpty(_role.Value) || _role.Value == "applicant")
                         {
-                            // Show login form if not logged in
+                            // Show login form if not logged in or applicant
                             view.Row(["gap-2 items-center"], content: view =>
                             {
                                 view.Text(["text-xs text-neutral-500"], "If officer:");
