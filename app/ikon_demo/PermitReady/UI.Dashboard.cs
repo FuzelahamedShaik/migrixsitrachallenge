@@ -41,9 +41,9 @@ public partial class IkonDemoApp
         int avgRisk = apps.Count > 0 ? (int)apps.Average(a => a.Result.RiskScore) : 0;
         int avgComp = apps.Count > 0 ? (int)apps.Average(a => a.Result.CompletenessScore) : 0;
 
-        view.Column(["h-full flex flex-col overflow-hidden"], content: view =>
+        view.Column(["h-full flex flex-col overflow-y-auto"], content: view =>
         {
-            // Dashboard header — fixed height, never shrinks
+            // Dashboard header
             view.Row(["px-8 py-5 border-b border-border justify-between items-center shrink-0"], content: view =>
             {
                 view.Column(["gap-0.5"], content: view =>
@@ -61,7 +61,7 @@ public partial class IkonDemoApp
             if (_showFilters.Value)
                 RenderDashboardFilters(view, _applications.Value);
 
-            // KPI cards — fixed height, never shrinks
+            // KPI cards
             view.Row(["px-8 py-4 gap-4 border-b border-border flex-wrap shrink-0"], content: view =>
             {
                 view.Button([Button.OutlineSm, "gap-2 shrink-0"],
@@ -80,15 +80,15 @@ public partial class IkonDemoApp
                     KpiCard(view, unpaid.Count.ToString(), "Awaiting Payment", "clock",      "text-amber-600");
             });
 
-            // Tabs — flex-1 so it fills all remaining vertical space
-            view.Box(["px-8 pt-4 flex-1 min-h-0 flex flex-col"], content: view =>
+            // Tabs
+            view.Box(["px-8 pt-4 pb-8 shrink-0"], content: view =>
             {
                 view.Tabs(
                     value: _dashboardTab.Value,
                     onValueChange: async v => { _dashboardTab.Value = v ?? "all"; },
                     listStyle: [Tabs.List, "shrink-0"],
                     triggerStyle: [Tabs.Trigger],
-                    contentStyle: [Tabs.Content, "flex-1 min-h-0"],
+                    contentStyle: [Tabs.Content, ""],
                     tabs:
                     [
                         new TabItem("all",        "All",          v => RenderAppTable(v, apps)),
